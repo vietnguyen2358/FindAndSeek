@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, SlidersHorizontal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { simulateAiTextAnalysis } from "@/lib/mockAi";
 
@@ -42,30 +42,30 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Search Filters</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex gap-2">
-          <Input
-            placeholder="Search by description, location, or attributes..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          />
-          <Button
-            onClick={handleSearch}
-            disabled={isAnalyzing || !searchQuery.trim()}
-          >
-            {isAnalyzing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-4">
+      <div className="flex-1 flex gap-2">
+        <Input
+          className="flex-1 bg-background border-border"
+          placeholder="Search by name, description, or location..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+        />
+        <Button
+          onClick={handleSearch}
+          disabled={isAnalyzing || !searchQuery.trim()}
+          variant="outline"
+        >
+          {isAnalyzing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Search className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+      <Button variant="outline" size="icon">
+        <SlidersHorizontal className="h-4 w-4" />
+      </Button>
+    </div>
   );
 }
