@@ -1,4 +1,4 @@
-import { cases, cameraFootage, type Case, type InsertCase, type CameraFootage, type InsertCameraFootage } from "@shared/schema";
+import { cases, cameraFootage, type Case, type InsertCase, type CameraFootage, type InsertCameraFootage, type AIAnalysis, type CameraAIAnalysis, type SearchRadius } from "@shared/schema";
 
 export interface IStorage {
   createCase(caseData: InsertCase): Promise<Case>;
@@ -7,6 +7,10 @@ export interface IStorage {
   updateCase(id: number, caseData: Partial<Case>): Promise<Case>;
   addCameraFootage(footage: InsertCameraFootage): Promise<CameraFootage>;
   getCaseFootage(caseId: number): Promise<CameraFootage[]>;
+  updateCaseAIAnalysis(id: number, analysis: AIAnalysis): Promise<Case>;
+  updateCaseSearchRadius(id: number, searchRadius: SearchRadius): Promise<Case>;
+  updateFootageAnalysis(id: number, analysis: CameraAIAnalysis): Promise<CameraFootage>;
+  addTimelineEvent(caseId: number, event: { time: string; event: string; details?: Record<string, any> }): Promise<Case>;
 }
 
 export class MemStorage implements IStorage {
@@ -30,7 +34,19 @@ export class MemStorage implements IStorage {
       status: "active",
       timeline: [],
       createdAt: new Date(),
-      images: []
+      images: [],
+      aiAnalysis: {
+        entities: [],
+        locations: [],
+        timestamps: [],
+        confidence: 0
+      },
+      searchRadius: {
+        radius: 0,
+        probableLocations: []
+      },
+      lastSighting: null,
+      transportMode: "walking"
     };
     this.cases.set(id, newCase);
     return newCase;
@@ -59,7 +75,11 @@ export class MemStorage implements IStorage {
     const newFootage: CameraFootage = {
       ...footage,
       id,
-      aiAnalysis: {}
+      aiAnalysis: {
+        detections: [],
+        summary: "",
+        processedAt: null
+      }
     };
     this.cameraFootage.set(id, newFootage);
     return newFootage;
@@ -69,6 +89,44 @@ export class MemStorage implements IStorage {
     return Array.from(this.cameraFootage.values()).filter(
       (footage) => footage.caseId === caseId
     );
+  }
+
+  async updateCaseAIAnalysis(id: number, analysis: AIAnalysis): Promise<Case> {
+    const existingCase = await this.getCase(id);
+    if (!existingCase) {
+      throw new Error("Case not found");
+    }
+    return this.updateCase(id, { aiAnalysis: analysis });
+  }
+
+  async updateCaseSearchRadius(id: number, searchRadius: SearchRadius): Promise<Case> {
+    const existingCase = await this.getCase(id);
+    if (!existingCase) {
+      throw new Error("Case not found");
+    }
+    return this.updateCase(id, { searchRadius });
+  }
+
+  async updateFootageAnalysis(id: number, analysis: CameraAIAnalysis): Promise<CameraFootage> {
+    const footage = this.cameraFootage.get(id);
+    if (!footage) {
+      throw new Error("Footage not found");
+    }
+    const updatedFootage = { ...footage, aiAnalysis: analysis };
+    this.cameraFootage.set(id, updatedFootage);
+    return updatedFootage;
+  }
+
+  async addTimelineEvent(
+    caseId: number,
+    event: { time: string; event: string; details?: Record<string, any> }
+  ): Promise<Case> {
+    const existingCase = await this.getCase(caseId);
+    if (!existingCase) {
+      throw new Error("Case not found");
+    }
+    const timeline = [...existingCase.timeline, event];
+    return this.updateCase(caseId, { timeline });
   }
 }
 
