@@ -31,26 +31,26 @@ export const mockDetections: DetectedPerson[] = [
   {
     id: 1,
     time: "10:15 AM",
-    description: "Male, mid-20s, red jacket, blue jeans, carrying backpack",
+    description: "Person in dark clothing crossing at crosswalk, heading east",
     confidence: 0.89,
-    thumbnail: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop",
-    bbox: [0.2, 0.1, 0.4, 0.9],
+    thumbnail: "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=",
+    bbox: [0.3, 0.4, 0.1, 0.2],
   },
   {
     id: 2,
     time: "10:16 AM",
-    description: "Female, early 20s, black coat, blonde hair",
-    confidence: 0.75,
-    thumbnail: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop",
-    bbox: [0.6, 0.1, 0.8, 0.9],
+    description: "Individual with light-colored coat using crosswalk, northbound",
+    confidence: 0.85,
+    thumbnail: "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=",
+    bbox: [0.5, 0.45, 0.1, 0.2],
   },
   {
     id: 3,
     time: "10:17 AM",
-    description: "Male, late 30s, brown leather jacket, glasses",
-    confidence: 0.82,
-    thumbnail: "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=100&h=100&fit=crop",
-    bbox: [0.4, 0.1, 0.6, 0.9],
+    description: "Person with backpack at intersection corner, waiting to cross",
+    confidence: 0.92,
+    thumbnail: "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=",
+    bbox: [0.7, 0.3, 0.1, 0.2],
   },
 ];
 
@@ -58,23 +58,23 @@ export const mockAlerts: Alert[] = [
   {
     id: 1,
     type: "detection",
-    title: "High Confidence Detection",
-    description: "Person matching description spotted at Transit Center",
+    title: "Multiple Matches in Downtown Area",
+    description: "Several individuals detected crossing at main intersection",
     time: "2 minutes ago",
     confidence: 0.89,
   },
   {
     id: 2,
     type: "area_update",
-    title: "Search Area Updated",
-    description: "Search radius expanded to include Downtown district",
+    title: "High Activity Zone Identified",
+    description: "Increased foot traffic at downtown crosswalk",
     time: "5 minutes ago",
   },
   {
     id: 3,
     type: "match",
     title: "Potential Match Found",
-    description: "Red jacket, male, 5'10\" spotted on 5th Avenue camera",
+    description: "Person with similar clothing pattern observed at crosswalk",
     time: "10 minutes ago",
     confidence: 0.75,
   },
@@ -96,23 +96,29 @@ const generatePersonSilhouette = (x: number, y: number, scale = 1) => `
   </g>
 `;
 
-export const mockVideoFrames = Array.from({ length: 30 }, (_, i) => 
-  `data:image/svg+xml,${encodeURIComponent(`
-    <svg width="640" height="480" xmlns="http://www.w3.org/2000/svg">
-      <rect width="100%" height="100%" fill="black"/>
-      <text x="50%" y="10%" font-family="Arial" font-size="24" fill="white" text-anchor="middle">
-        Live Camera Feed - Frame ${i + 1}
-      </text>
-      ${i % 3 === 0 ? `
-        ${generatePersonSilhouette(320, 200, 1)}
-        ${generatePersonSilhouette(480, 220, 0.8)}
-        ${generatePersonSilhouette(160, 240, 1.2)}
-      ` : i % 3 === 1 ? `
-        ${generatePersonSilhouette(350, 210, 1.1)}
-        ${generatePersonSilhouette(200, 230, 0.9)}
-      ` : `
-        ${generatePersonSilhouette(300, 220, 1)}
-      `}
-    </svg>
-  `)}`
-);
+// Create mock video frames - first one is the street image, rest are generated SVGs
+export const mockVideoFrames = [
+  // Real image URL for the first frame
+  "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=",
+  // Generated frames for the rest
+  ...Array.from({ length: 29 }, (_, i) => 
+    `data:image/svg+xml,${encodeURIComponent(`
+      <svg width="640" height="480" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100%" height="100%" fill="black"/>
+        <text x="50%" y="10%" font-family="Arial" font-size="24" fill="white" text-anchor="middle">
+          Live Camera Feed - Frame ${i + 2}
+        </text>
+        ${i % 3 === 0 ? `
+          ${generatePersonSilhouette(320, 200, 1)}
+          ${generatePersonSilhouette(480, 220, 0.8)}
+          ${generatePersonSilhouette(160, 240, 1.2)}
+        ` : i % 3 === 1 ? `
+          ${generatePersonSilhouette(350, 210, 1.1)}
+          ${generatePersonSilhouette(200, 230, 0.9)}
+        ` : `
+          ${generatePersonSilhouette(300, 220, 1)}
+        `}
+      </svg>
+    `)}`
+  )
+];

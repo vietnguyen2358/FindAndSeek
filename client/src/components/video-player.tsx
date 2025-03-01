@@ -22,8 +22,9 @@ export function VideoPlayer({ detections = [], showDetections = true }: VideoPla
     if (!ctx) return;
 
     const img = new Image();
-    img.src = mockVideoFrames[currentFrame];
-    
+    img.crossOrigin = "anonymous"; // Enable CORS for the image
+    const frameSource = mockVideoFrames[currentFrame];
+
     img.onload = () => {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
@@ -41,6 +42,8 @@ export function VideoPlayer({ detections = [], showDetections = true }: VideoPla
         });
       }
     };
+
+    img.src = frameSource;
 
     const interval = setInterval(() => {
       if (isPlaying) {

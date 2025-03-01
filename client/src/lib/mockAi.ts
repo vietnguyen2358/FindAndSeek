@@ -7,16 +7,17 @@ export async function simulateAiImageAnalysis(image: File): Promise<{
 }> {
   await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate processing
   return {
-    confidence: Math.random() * 0.5 + 0.3,
+    confidence: 0.92,
     matches: [
-      "Person wearing red jacket",
-      "Male, approximately 5'10\"",
-      "Baseball cap",
+      "Person in dark winter coat",
+      "Individual with light-colored jacket",
+      "Person carrying backpack",
+      "Group crossing at intersection"
     ],
     locations: [
-      "Downtown area",
-      "Near Central Park",
-      "Main Street crossing",
+      "Downtown crosswalk",
+      "Main intersection",
+      "City center pedestrian crossing"
     ],
   };
 }
@@ -29,13 +30,16 @@ export async function simulateAiTextAnalysis(text: string): Promise<{
   await new Promise((resolve) => setTimeout(resolve, 1000));
   return {
     entities: [
-      "John Doe",
-      "Red jacket",
-      "Black backpack",
+      "Dark winter coat",
+      "Light colored jacket",
+      "Backpack",
+      "Pedestrian crossing",
+      "Multiple individuals"
     ],
     locations: [
-      "Central Park",
-      "5th Avenue",
+      "Downtown crosswalk",
+      "Main intersection",
+      "City center"
     ],
     timestamps: [
       "2024-03-21 15:30",
@@ -55,11 +59,11 @@ export function generateMockTimeline(caseData: Case): {
     },
     {
       time: new Date(Date.now() - 3600000).toLocaleString(),
-      event: "AI analysis completed",
+      event: "Multiple individuals detected at downtown crosswalk",
     },
     {
       time: new Date(Date.now() - 1800000).toLocaleString(),
-      event: "New footage analyzed",
+      event: "High confidence matches in city center area",
     },
   ];
 }
