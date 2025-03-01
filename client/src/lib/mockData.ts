@@ -80,7 +80,7 @@ export const mockAlerts: Alert[] = [
   },
 ];
 
-// Mock video stream frames (base64 encoded black frames with white text)
+// Mock video stream frames (base64 encoded SVG frames with person silhouettes)
 export const mockVideoFrames = Array.from({ length: 30 }, (_, i) => 
   `data:image/svg+xml,${encodeURIComponent(`
     <svg width="640" height="480" xmlns="http://www.w3.org/2000/svg">
@@ -88,6 +88,17 @@ export const mockVideoFrames = Array.from({ length: 30 }, (_, i) =>
       <text x="50%" y="50%" font-family="Arial" font-size="24" fill="white" text-anchor="middle">
         Camera Feed Frame ${i + 1}
       </text>
+      ${i % 3 === 0 ? `
+        <!-- Person silhouette -->
+        <path d="M320 160 
+                 C320 140 310 120 290 120
+                 C270 120 260 140 260 160
+                 C260 180 270 200 290 200
+                 C310 200 320 180 320 160 Z
+                 M275 200 L275 300 L305 300 L305 200 Z
+                 M275 240 L260 320 L280 320 L290 260 L300 320 L320 320 L305 240 Z"
+              fill="rgba(59, 130, 246, 0.5)" stroke="rgba(59, 130, 246, 0.8)" stroke-width="2"/>
+      ` : ''}
     </svg>
   `)}`
 );
