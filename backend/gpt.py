@@ -88,7 +88,7 @@ def describe_clothing(image: cv2.Mat) -> Dict[str, Any]:
         """
 
         response = client.chat.completions.create(
-            model="gpt-4-vision-preview",
+            model="gpt-4o-mini",
             messages=[
                 {
                     "role": "user",
