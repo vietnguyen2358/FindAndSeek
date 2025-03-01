@@ -2,18 +2,23 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from yolo import detect_and_crop_people
-from gpt import describe_clothing
+from gpt import describe_clothing, client
 from models import ProcessingResponse, PersonDescription
 import shutil
 import os
 import logging
 import time
-from typing import List
+from typing import List, Dict
 from datetime import datetime
+from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Pydantic model for text request
+class TextRequest(BaseModel):
+    text: str
 
 app = FastAPI(
     title="Find and Seek API",
@@ -151,4 +156,30 @@ async def health_check():
         "timestamp": datetime.now().isoformat(),
         "upload_dir": os.path.exists(UPLOAD_DIR),
         "results_dir": os.path.exists(RESULTS_DIR)
-    } 
+    }
+
+@app.post("/gpt/text")
+async def process_text(request: TextRequest):
+    """
+    Test endpoint to process text with GPT-4
+    """
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "user", "content": request.text}
+            ],
+            max_tokens=500
+        )
+        
+        return {
+            "response": response.choices[0].message.content,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing text with GPT: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing text: {str(e)}"
+        ) 
