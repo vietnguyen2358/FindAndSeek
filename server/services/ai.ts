@@ -33,6 +33,28 @@ interface MovementPrediction {
   timeElapsed: number;
 }
 
+// Get embeddings for a text using Groq
+async function getEmbeddings(text: string): Promise<number[]> {
+  try {
+    const response = await groq.embeddings.create({
+      model: "grok-2-1212",
+      input: text,
+    });
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error("Error getting embeddings:", error);
+    return [];
+  }
+}
+
+// Calculate cosine similarity between two vectors
+function cosineSimilarity(a: number[], b: number[]): number {
+  const dotProduct = a.reduce((acc, val, i) => acc + val * b[i], 0);
+  const aMagnitude = Math.sqrt(a.reduce((acc, val) => acc + val * val, 0));
+  const bMagnitude = Math.sqrt(b.reduce((acc, val) => acc + val * val, 0));
+  return dotProduct / (aMagnitude * bMagnitude);
+}
+
 export async function analyzeReport(text: string): Promise<AnalysisResult> {
   try {
     const response = await groq.chat.completions.create({
@@ -99,7 +121,6 @@ export async function analyzeImage(base64Image: string): Promise<ImageAnalysisRe
 
     const result = JSON.parse(response.choices[0].message.content || "{}");
 
-    // Process and normalize the response
     return {
       detections: result.detections?.map((d: any) => ({
         confidence: d.confidence || 0.8,
@@ -114,6 +135,34 @@ export async function analyzeImage(base64Image: string): Promise<ImageAnalysisRe
       detections: [],
       summary: "Failed to analyze image"
     };
+  }
+}
+
+export async function matchSearchTerms(searchQuery: string, detections: ImageAnalysisResult[]): Promise<number[]> {
+  try {
+    // Get embeddings for the search query
+    const queryEmbedding = await getEmbeddings(searchQuery);
+
+    // Get embeddings for each detection description
+    const detectionPromises = detections.map(d => 
+      Promise.all(d.detections.map(det => getEmbeddings(det.description)))
+    );
+    const detectionEmbeddings = await Promise.all(detectionPromises);
+
+    // Find matches using cosine similarity
+    const matches: number[] = [];
+    detectionEmbeddings.forEach((detection, index) => {
+      const similarities = detection.map(emb => cosineSimilarity(queryEmbedding, emb));
+      const maxSimilarity = Math.max(...similarities);
+      if (maxSimilarity > 0.7) { // Threshold for considering it a match
+        matches.push(index);
+      }
+    });
+
+    return matches;
+  } catch (error) {
+    console.error("Error matching search terms:", error);
+    return [];
   }
 }
 
@@ -144,40 +193,4 @@ export async function predictMovement(
     probableLocations,
     timeElapsed
   };
-}
-
-// Helper function to match search terms with detections
-export async function matchSearchTerms(searchQuery: string, detections: ImageAnalysisResult[]): Promise<number[]> {
-  try {
-    const response = await groq.chat.completions.create({
-      model: "grok-2-1212",
-      messages: [
-        {
-          role: "system",
-          content: `You are analyzing search queries for missing persons cases. 
-          Compare the search terms with the provided detections and return an array of indices 
-          for detections that match the search criteria. Consider:
-          - Physical descriptions
-          - Clothing
-          - Location
-          - Time frame
-          Return your response as a JSON array of indices.`
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            query: searchQuery,
-            detections: detections.map(d => d.detections.map(det => det.description))
-          })
-        }
-      ],
-      response_format: { type: "json_object" }
-    });
-
-    const matches = JSON.parse(response.choices[0].message.content || "[]");
-    return matches.indices || [];
-  } catch (error) {
-    console.error("Error matching search terms:", error);
-    return [];
-  }
 }
