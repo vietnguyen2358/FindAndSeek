@@ -7,6 +7,14 @@ export interface MapPin {
   location: string;
 }
 
+export interface DetectedPersonDetails {
+  age: string;
+  clothing: string;
+  environment: string;
+  movement: string;
+  distinctive_features: string[];
+}
+
 export interface DetectedPerson {
   id: number;
   time: string;
@@ -14,6 +22,7 @@ export interface DetectedPerson {
   confidence: number;
   thumbnail: string;
   bbox: [number, number, number, number];
+  details: DetectedPersonDetails;
 }
 
 export interface Alert {
@@ -34,5 +43,6 @@ export interface AIAnalysisResult {
     bbox: [number, number, number, number];
     confidence: number;
     description: string;
+    details: DetectedPersonDetails;
   }[];
 }

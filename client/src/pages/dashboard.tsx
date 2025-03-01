@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Play, SkipBack, SkipForward, Eye, EyeOff } from "lucide-react";
 import { mockPins, mockDetections } from "@/lib/mockData";
 import type { DetectedPerson } from "@shared/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const [selectedCamera, setSelectedCamera] = useState<{
@@ -17,6 +24,7 @@ export default function Dashboard() {
   } | null>(null);
   const [hideDetections, setHideDetections] = useState(false);
   const [currentTime, setCurrentTime] = useState("00:00");
+  const [selectedPerson, setSelectedPerson] = useState<DetectedPerson | null>(null);
   const totalDuration = "05:00";
 
   return (
@@ -76,9 +84,9 @@ export default function Dashboard() {
                   </div>
                   <div className="aspect-video bg-black rounded-lg relative">
                     <VideoPlayer
-                      detections={mockDetections.map(d => ({
+                      detections={mockDetections.map((d) => ({
                         bbox: d.bbox,
-                        confidence: d.confidence
+                        confidence: d.confidence,
                       }))}
                       showDetections={!hideDetections}
                     />
@@ -114,7 +122,11 @@ export default function Dashboard() {
                     <ScrollArea className="h-[200px]">
                       <div className="space-y-2">
                         {mockDetections.map((person) => (
-                          <Card key={person.id}>
+                          <Card
+                            key={person.id}
+                            className="cursor-pointer hover:bg-accent/50 transition-colors"
+                            onClick={() => setSelectedPerson(person)}
+                          >
                             <CardContent className="p-3">
                               <div className="flex items-start gap-3">
                                 <img
@@ -162,6 +174,61 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Person Details Dialog */}
+      <Dialog open={!!selectedPerson} onOpenChange={() => setSelectedPerson(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              Person Details
+              <Badge variant={selectedPerson?.confidence && selectedPerson.confidence > 0.8 ? "default" : "secondary"}>
+                {selectedPerson?.confidence && Math.round(selectedPerson.confidence * 100)}% Match
+              </Badge>
+            </DialogTitle>
+          </DialogHeader>
+          {selectedPerson && (
+            <div className="space-y-4">
+              <div className="aspect-square relative overflow-hidden rounded-lg">
+                <img
+                  src={selectedPerson.thumbnail}
+                  alt={`Person ${selectedPerson.id}`}
+                  className="object-cover w-full h-full"
+                />
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <h4 className="text-sm font-medium">Time Detected</h4>
+                  <p className="text-sm text-muted-foreground">{selectedPerson.time}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium">Age Estimate</h4>
+                  <p className="text-sm text-muted-foreground">{selectedPerson.details.age}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium">Clothing Description</h4>
+                  <p className="text-sm text-muted-foreground">{selectedPerson.details.clothing}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium">Environment</h4>
+                  <p className="text-sm text-muted-foreground">{selectedPerson.details.environment}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium">Movement</h4>
+                  <p className="text-sm text-muted-foreground">{selectedPerson.details.movement}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium">Distinctive Features</h4>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {selectedPerson.details.distinctive_features.map((feature, index) => (
+                      <Badge key={index} variant="outline">{feature}</Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

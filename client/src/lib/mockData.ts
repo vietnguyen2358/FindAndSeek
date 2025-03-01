@@ -35,6 +35,17 @@ export const mockDetections: DetectedPerson[] = [
     confidence: 0.89,
     thumbnail: "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=",
     bbox: [0.3, 0.4, 0.1, 0.2],
+    details: {
+      age: "20-30 years",
+      clothing: "Dark winter coat, blue jeans, carrying backpack",
+      environment: "Crossing at marked pedestrian crosswalk",
+      movement: "Walking east at moderate pace",
+      distinctive_features: [
+        "Large black backpack",
+        "Quick, purposeful stride",
+        "Solo pedestrian"
+      ]
+    }
   },
   {
     id: 2,
@@ -43,6 +54,17 @@ export const mockDetections: DetectedPerson[] = [
     confidence: 0.85,
     thumbnail: "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=",
     bbox: [0.5, 0.45, 0.1, 0.2],
+    details: {
+      age: "30-40 years",
+      clothing: "Light beige coat, dark pants, possible shoulder bag",
+      environment: "Middle of crosswalk intersection",
+      movement: "Walking north, slightly slower pace",
+      distinctive_features: [
+        "Light-colored coat stands out",
+        "Carrying shoulder bag",
+        "Careful walking pattern"
+      ]
+    }
   },
   {
     id: 3,
@@ -51,6 +73,17 @@ export const mockDetections: DetectedPerson[] = [
     confidence: 0.92,
     thumbnail: "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=",
     bbox: [0.7, 0.3, 0.1, 0.2],
+    details: {
+      age: "20-25 years",
+      clothing: "Red jacket, dark jeans, black backpack",
+      environment: "Standing at corner of intersection",
+      movement: "Stationary, waiting to cross",
+      distinctive_features: [
+        "Bright red jacket",
+        "Black backpack",
+        "Looking at phone"
+      ]
+    }
   },
 ];
 
