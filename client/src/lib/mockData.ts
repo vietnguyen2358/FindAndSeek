@@ -1,9 +1,18 @@
 import type { MapPin, DetectedPerson } from "@shared/types";
 
-// Define 4 key locations in New York
+// Define key locations in New York with Herald Square as primary camera
 export const mockPins: MapPin[] = [
   {
     id: 1,
+    lat: 40.7502, // Herald Square
+    lng: -73.9877,
+    type: "camera",
+    timestamp: new Date().toISOString(),
+    location: "Herald Square",
+    detectionCount: 0
+  },
+  {
+    id: 2,
     lat: 40.7580, // Times Square
     lng: -73.9855,
     type: "camera",
@@ -12,7 +21,7 @@ export const mockPins: MapPin[] = [
     detectionCount: 0
   },
   {
-    id: 2,
+    id: 3,
     lat: 40.7527, // Grand Central
     lng: -73.9772,
     type: "camera",
@@ -21,7 +30,7 @@ export const mockPins: MapPin[] = [
     detectionCount: 0
   },
   {
-    id: 3,
+    id: 4,
     lat: 40.7484, // Empire State
     lng: -73.9857,
     type: "camera",
@@ -30,7 +39,7 @@ export const mockPins: MapPin[] = [
     detectionCount: 0
   },
   {
-    id: 4,
+    id: 5,
     lat: 40.7829, // Central Park
     lng: -73.9654,
     type: "camera",
@@ -40,8 +49,16 @@ export const mockPins: MapPin[] = [
   }
 ];
 
+// Live camera feed for Herald Square and other locations (if available)
+export const cameraFeeds = {
+  1: "https://www.earthcam.com/usa/newyork/heraldsquare/?cam=heraldsquare_nyc",
+  2: "",
+  3: "",
+  4: "",
+  5: ""
+};
+
 // Empty mock data for other features
-export const cameraFeeds = {};
 export const cameraImages = {};
 export const mockDetections: DetectedPerson[] = [];
 export const personImages = {};
