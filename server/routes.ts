@@ -19,19 +19,14 @@ async function getSimilarityScore(query: string, detection: DetectedPerson): Pro
       messages: [
         {
           role: "system",
-          content: `You are a similarity matching expert. Compare the search query with the person detection and return a similarity score between 0 and 1 as a JSON number. Higher scores mean better matches. Consider all aspects: physical description, clothing, location, time, and actions.`
+          content: `You are a matcher for finding missing persons. Compare the search query with the detection and return a similarity score between 0 and 1 as a JSON number. Focus mainly on clothing and physical description matches.`
         },
         {
           role: "user",
-          content: `Search query: "${query}"
-
-Person detected:
-- Description: ${detection.description}
-- Clothing: ${detection.details.clothing}
-- Age: ${detection.details.age}
-- Location: ${detection.details.environment}
-- Movement: ${detection.details.movement}
-- Features: ${detection.details.distinctive_features.join(", ")}`
+          content: `Search: "${query}"
+Detection: ${detection.description}
+Clothing: ${detection.details.clothing}
+Features: ${detection.details.distinctive_features.join(", ")}`
         }
       ],
       response_format: { type: "json_object" }
@@ -240,20 +235,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         messages: [
           {
             role: "system",
-            content: `You are an AI assistant helping to find missing persons. Analyze user queries and extract information in JSON format.
-
-Your response must be a valid JSON object with this structure:
+            content: `Extract key clothing and physical features from the search query. Return a JSON object:
 {
   "filters": [
-    {"category": "clothing", "value": "specific clothing item or color"},
-    {"category": "physical", "value": "physical description"},
-    {"category": "location", "value": "location mentioned"},
-    {"category": "time", "value": "time or timeframe mentioned"},
-    {"category": "age", "value": "age or age range"},
-    {"category": "action", "value": "what the person was doing"}
+    {"category": "clothing", "value": "specific clothing item"},
+    {"category": "physical", "value": "physical description"}
   ],
-  "response": "Natural language response about what you understood",
-  "suggestions": ["Suggested follow-up questions or additional details to ask"]
+  "response": "Brief summary of what to look for - focus on clothing"
 }`
           },
           {
@@ -289,36 +277,31 @@ Your response must be a valid JSON object with this structure:
             matchScore: score
           }));
 
-        // Get analysis of why these are the best matches
+        // Get brief analysis of matches
         const matchAnalysis = await openai.chat.completions.create({
           model: "gpt-4-turbo-preview",
           messages: [
             {
               role: "system",
-              content: "Explain why these detections match the search criteria. Be concise but specific about the matching elements."
+              content: "Provide a very brief explanation of the clothing matches. One short sentence per match."
             },
             {
               role: "user",
-              content: `Search query: "${query}"
-              Top matches:
-              ${topMatches.map((match, i) => `
-              Match ${i + 1} (${Math.round(match.matchScore * 100)}% match):
-              - ${match.description}
-              - ${match.details.clothing}
-              - ${match.details.environment}
-              `).join('\n')}`
+              content: `Search: "${query}"
+Matches: ${topMatches.map((match, i) => 
+  `Match ${i + 1}: ${match.description}, wearing ${match.details.clothing}`
+).join('\n')}`
             }
           ]
         });
 
-        // Return combined results
+        // Return combined results in a single response
         res.json({
           ...searchAnalysis,
           topMatches,
-          matchAnalysis: matchAnalysis.choices[0].message.content
+          matchAnalysis: matchAnalysis.choices[0].message.content?.split('\n')
         });
       } else {
-        // Just return the search analysis if no detections provided
         res.json(searchAnalysis);
       }
 
@@ -327,8 +310,8 @@ Your response must be a valid JSON object with this structure:
       res.status(400).json({
         error: error.message,
         filters: [],
-        response: "I encountered an error processing your request. Please try again.",
-        suggestions: ["Try rephrasing your search query"]
+        response: "Sorry, I couldn't process that search. Please try again.",
+        matchAnalysis: []
       });
     }
   });
@@ -341,6 +324,11 @@ import { Router } from "express";
 import { z } from "zod";
 import { findSimilarDetections, analyzeClothingDescription } from "./services/similarity-search";
 import type { SearchCriteria } from "@shared/types";
+import OpenAI from "openai";
+
+const openai2 = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 const router = Router();
 
@@ -365,7 +353,7 @@ router.post("/api/search", async (req, res) => {
     const matches = await findSimilarDetections(criteria);
 
     // Get ChatGPT to explain the matches
-    const analysis = await openai.chat.completions.create({
+    const analysis = await openai2.chat.completions.create({
       model: "gpt-4-turbo-preview",
       messages: [
         {
@@ -375,7 +363,6 @@ router.post("/api/search", async (req, res) => {
         {
           role: "user",
           content: `Search criteria: "${criteria.description}"
-
 Matches found:
 ${matches.map((match, i) => `
 Match ${i + 1} (${Math.round(match.similarity * 100)}% similar):

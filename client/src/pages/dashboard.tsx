@@ -76,17 +76,20 @@ export default function Dashboard() {
       if (result.topMatches) {
         setSearchResults(result.topMatches);
 
-        // Add match analysis to chat
+        // Add a single concise message with match information
         setChatMessages(prev => [
           ...prev,
           {
             role: 'assistant',
-            content: result.response + "\n\n" + result.matchAnalysis,
+            content: `${result.response}\n\n${
+              result.matchAnalysis?.length > 0 
+                ? '🎯 Potential matches found:\n' + result.matchAnalysis.join('\n')
+                : 'No close matches found yet.'
+            }`,
             timestamp: new Date().toLocaleString()
           }
         ]);
       } else {
-        // Handle case when no detections were analyzed
         setSearchResults([]);
         setChatMessages(prev => [
           ...prev,
@@ -98,17 +101,6 @@ export default function Dashboard() {
         ]);
       }
 
-      // Add suggestions if available
-      if (result.suggestions?.length > 0) {
-        setChatMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: "You might also want to consider:\n" + result.suggestions.join("\n"),
-            timestamp: new Date().toLocaleString()
-          }
-        ]);
-      }
 
     } catch (error) {
       console.error('Error processing search:', error);
