@@ -4,8 +4,8 @@ import type { DetectedPerson, MapPin } from "@shared/types";
 import { cameraFeeds } from "@/lib/mockData";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { RefreshCw, X } from "lucide-react";
+import { useState } from "react";
 
 interface CameraSidebarProps {
   pin: MapPin;
@@ -14,20 +14,14 @@ interface CameraSidebarProps {
 }
 
 export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const imageRef = useRef<HTMLImageElement>(null);
+  const [timestamp, setTimestamp] = useState(Date.now());
 
-  useEffect(() => {
-    const refreshInterval = setInterval(() => {
-      if (imageRef.current) {
-        const cameraUrl = `https://webcams.nyctmc.org${cameraFeeds[pin.id as keyof typeof cameraFeeds]}?t=${Date.now()}`;
-        imageRef.current.src = cameraUrl;
-      }
-    }, 1000);
-
-    return () => clearInterval(refreshInterval);
-  }, [pin.id]);
+  const handleRefresh = () => {
+    setIsLoading(true);
+    setTimestamp(Date.now());
+  };
 
   const handleImageLoad = () => {
     setIsLoading(false);
@@ -46,9 +40,19 @@ export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) 
           <CardTitle className="text-lg">
             {pin.location}
           </CardTitle>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={handleRefresh}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <div className="text-sm text-muted-foreground">
           Stream Status: {isLoading ? "Loading..." : hasError ? "Error" : "Live"}
@@ -57,8 +61,7 @@ export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) 
       <CardContent className="flex-1 space-y-4 p-4">
         <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
           <img
-            ref={imageRef}
-            src={`https://webcams.nyctmc.org${cameraFeeds[pin.id as keyof typeof cameraFeeds]}?t=${Date.now()}`}
+            src={`https://webcams.nyctmc.org${cameraFeeds[pin.id as keyof typeof cameraFeeds]}?t=${timestamp}`}
             className={`w-full h-full object-cover transition-opacity duration-200 ${
               isLoading ? 'opacity-0' : 'opacity-100'
             }`}
