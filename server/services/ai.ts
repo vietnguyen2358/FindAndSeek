@@ -1,14 +1,10 @@
 import OpenAI from "openai";
-import vision from '@google-cloud/vision';
+import { spawn } from 'child_process';
+import path from 'path';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Initialize Google Vision client
-const googleVisionClient = new vision.ImageAnnotatorClient({
-  apiKey: process.env.GOOGLE_VISION_API_KEY
 });
 
 interface AnalysisResult {
@@ -44,48 +40,52 @@ function cropImageFromBase64(base64Image: string, bbox: [number, number, number,
   return base64Image;
 }
 
-// First stage: Detect people using Google Vision API
-async function detectPeopleWithGoogleVision(base64Image: string): Promise<{
+// First stage: Detect people using Roboflow via Python script
+async function detectPeopleWithRoboflow(base64Image: string): Promise<{
   bbox: [number, number, number, number];
   confidence: number;
 }[]> {
   try {
-    console.log('Starting Google Vision person detection...');
-    const request = {
-      image: {
-        content: base64Image
-      }
-    };
+    console.log('Starting Roboflow person detection...');
 
-    const [result] = await googleVisionClient.objectLocalization(request);
-    const objects = result.localizedObjectAnnotations || [];
-    console.log(`Google Vision detected ${objects.length} objects`);
+    return new Promise((resolve, reject) => {
+      const pythonProcess = spawn('python3', [
+        path.join(__dirname, 'roboflow_detector.py')
+      ]);
 
-    // Filter for person detections and normalize coordinates
-    const detections = objects
-      .filter(obj => obj.name === 'Person')
-      .map(obj => {
-        const vertices = obj.boundingPoly?.normalizedVertices || [];
-        if (vertices.length === 4) {
-          // Convert to [x, y, width, height] format
-          const x = vertices[0].x || 0;
-          const y = vertices[0].y || 0;
-          const width = (vertices[1].x || 0) - x;
-          const height = (vertices[2].y || 0) - y;
+      let output = '';
 
-          return {
-            bbox: [x, y, width, height] as [number, number, number, number],
-            confidence: obj.score || 0
-          };
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        console.error('Python error:', data.toString());
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error('Python process exited with code', code);
+          return reject(new Error('Roboflow detection failed'));
         }
-        return null;
-      })
-      .filter((detection): detection is NonNullable<typeof detection> => detection !== null);
 
-    console.log(`Found ${detections.length} people in the image`);
-    return detections;
+        try {
+          const result = JSON.parse(output);
+          if (!result.success) {
+            return reject(new Error(result.error));
+          }
+          resolve(result.detections);
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      // Send base64 image to Python script
+      pythonProcess.stdin.write(base64Image);
+      pythonProcess.stdin.end();
+    });
   } catch (error) {
-    console.error("Error detecting people with Google Vision:", error);
+    console.error("Error detecting people with Roboflow:", error);
     return [];
   }
 }
@@ -156,9 +156,9 @@ async function analyzePersonWithGPT4(base64Image: string, bbox: [number, number,
 export async function analyzeImage(base64Image: string): Promise<ImageAnalysisResult> {
   try {
     console.log('Starting image analysis pipeline...');
-    // First detect all people using Google Vision API
-    const detections = await detectPeopleWithGoogleVision(base64Image);
-    console.log('Google Vision detections:', detections);
+    // First detect all people using Roboflow
+    const detections = await detectPeopleWithRoboflow(base64Image);
+    console.log('Roboflow detections:', detections);
 
     // Then analyze each detected person with GPT-4 Vision
     const analysisPromises = detections.map(async (detection) => {
@@ -185,7 +185,7 @@ export async function analyzeImage(base64Image: string): Promise<ImageAnalysisRe
   }
 }
 
-// Mock implementation for missing functions
+// Mock implementations for other functions
 export async function analyzeReport(text: string): Promise<AnalysisResult> {
   return {
     entities: ['Example entity'],
