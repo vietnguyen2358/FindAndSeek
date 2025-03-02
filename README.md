@@ -1,4 +1,4 @@
-# FindAndSeekPro
+# FindAndSeek
 
 A sophisticated surveillance monitoring system with real-time camera feed displays, detection analytics, and user role management.
 
@@ -34,7 +34,7 @@ The project is organized into two main components:
 1. Clone the repository:
    ```
    git clone https://github.com/vietnguyen2358/FindAndSeek.git
-   cd FindAndSeekPro
+   cd FindAndSeek
    ```
 
 2. Install dependencies:
@@ -43,6 +43,13 @@ The project is organized into two main components:
    cd client
    npm install
    cd ..
+   ```
+
+3. Set API KEYS:
+   ```
+   cd client
+   touch .env
+   Add necessary API KEYS
    ```
 
 ### Running the Application
@@ -60,30 +67,7 @@ The project is organized into two main components:
    cd client
    npm run dev
    ```
-
-The server will run on port 3001, and the client will run on port 5173 (Vite's default) or another available port.
-
-## Troubleshooting
-
-### Port Conflicts
-
-If you encounter `EADDRINUSE` errors when starting either the server or client:
-
-1. Ensure no other processes are running on the same ports:
-   ```
-   lsof -i :3000,3001,5000 | grep LISTEN
-   ```
-
-2. Kill any conflicting processes:
-   ```
-   kill -9 <PID>
-   ```
-
-3. Use different ports for server and client by setting the PORT environment variable:
-   ```
-   PORT=3001 npm run dev  # For server
-   ```
-
+   
 ### Images Not Loading
 
 If images are not displaying correctly:
@@ -107,13 +91,6 @@ The client is built with:
 - React for UI components
 - Tailwind CSS for styling
 - React Router for navigation
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add some amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
 5. Open a pull request
 
 ## License
