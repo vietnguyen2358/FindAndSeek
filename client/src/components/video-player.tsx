@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { DetectedPerson } from "@shared/types";
 import { ObjectDetector } from "@/lib/objectDetection";
+import { cameraImages } from "@/lib/mockData";
 
 interface VideoPlayerProps {
   detections?: {
@@ -9,12 +10,14 @@ interface VideoPlayerProps {
   }[];
   showDetections?: boolean;
   onPersonsDetected?: (persons: DetectedPerson[]) => void;
+  cameraId: number;
 }
 
 export function VideoPlayer({ 
   detections = [], 
   showDetections = true,
-  onPersonsDetected 
+  onPersonsDetected,
+  cameraId
 }: VideoPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -53,7 +56,7 @@ export function VideoPlayer({
           );
 
           // Draw border
-          ctx.strokeStyle = `rgba(59, 130, 246, ${confidence})`;
+          ctx.strokeStyle = '#3b82f6';
           ctx.lineWidth = 2;
           ctx.strokeRect(
             x * canvas.width,
@@ -95,10 +98,10 @@ export function VideoPlayer({
       }
     };
 
-    // Use the crosswalk image
-    img.src = "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=";
+    // Use the camera image based on camera ID
+    img.src = cameraImages[cameraId] || cameraImages[1];
 
-  }, [showDetections, onPersonsDetected]);
+  }, [showDetections, onPersonsDetected, cameraId]);
 
   return (
     <canvas

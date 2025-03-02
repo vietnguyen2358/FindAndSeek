@@ -27,6 +27,13 @@ export const mockPins: MapPin[] = [
   },
 ];
 
+// Three different test images for different cameras
+export const cameraImages = {
+  1: "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=",
+  2: "https://media.gettyimages.com/id/1444565069/photo/people-crossing-a-road-at-a-crosswalk-in-nyc.jpg?s=612x612&w=gi&k=20&c=3lLc7UXs_ybD8jyhZR4aqJz2KrNS51pYwLGXbC9bxDU=",
+  3: "https://media.gettyimages.com/id/1408837492/photo/crowd-of-people-walking-on-the-street-in-new-york-city.jpg?s=612x612&w=gi&k=20&c=jjt_3DvHuaQB9qEoXY7eWZjBMx0JDHw5P7Rm_2u4QFM="
+};
+
 export const mockDetections: DetectedPerson[] = [
   {
     id: 1,
@@ -111,20 +118,4 @@ export const mockAlerts: Alert[] = [
     time: "10 minutes ago",
     confidence: 0.75,
   },
-];
-
-export const mockVideoFrames = [
-  // Real image URL for the first frame
-  "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=",
-  // Generated frames for the rest
-  ...Array.from({ length: 29 }, (_, i) => 
-    `data:image/svg+xml,${encodeURIComponent(`
-      <svg width="640" height="480" xmlns="http://www.w3.org/2000/svg">
-        <rect width="100%" height="100%" fill="black"/>
-        <text x="50%" y="10%" font-family="Arial" font-size="24" fill="white" text-anchor="middle">
-          Live Camera Feed - Frame ${i + 2}
-        </text>
-      </svg>
-    `)}`
-  )
 ];

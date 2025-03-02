@@ -16,7 +16,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { PersonDetector } from "@/components/person-detector";
 
 export default function Dashboard() {
   const [selectedCamera, setSelectedCamera] = useState<{
@@ -47,11 +46,6 @@ export default function Dashboard() {
 
       <div className="container mx-auto py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Person Detection Test */}
-          <div className="lg:col-span-8 space-y-6">
-            <PersonDetector />
-          </div>
-
           {/* Map and Camera Panel */}
           <div className="lg:col-span-8 space-y-6">
             <InteractiveMap
@@ -104,6 +98,7 @@ export default function Dashboard() {
                       }))}
                       showDetections={!hideDetections}
                       onPersonsDetected={handlePersonsDetected}
+                      cameraId={selectedCamera.id}
                     />
                     {/* Video controls */}
                     <div className="absolute bottom-4 left-0 right-0 px-4">
