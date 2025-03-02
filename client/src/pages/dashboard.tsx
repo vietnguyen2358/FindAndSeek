@@ -30,10 +30,13 @@ interface ChatMessage {
 export default function Dashboard() {
   const [selectedPerson, setSelectedPerson] = useState<DetectedPerson | null>(null);
   const [selectedPin, setSelectedPin] = useState<MapPinType | null>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([-74.006, 40.7128]);
+  const [mapZoom, setMapZoom] = useState(14);
   const [detections, setDetections] = useState(mockDetections);
   const [searchResults, setSearchResults] = useState<DetectedPerson[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [highlightedPinId, setHighlightedPinId] = useState<number | undefined>();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
@@ -166,6 +169,24 @@ export default function Dashboard() {
     handleSearch(processed);
   };
 
+  const handlePersonClick = (person: DetectedPerson) => {
+    setSelectedPerson(person);
+
+    // Find the camera pin associated with this detection
+    const cameraPin = mockPins.find(pin =>
+      pin.type === "camera" && pin.id === person.cameraId
+    );
+
+    if (cameraPin) {
+      // Highlight the camera pin
+      setHighlightedPinId(cameraPin.id);
+
+      // Center map on the camera location
+      setMapCenter([cameraPin.lng, cameraPin.lat]);
+      setMapZoom(16); // Zoom in closer
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
@@ -176,7 +197,7 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold">Find & Seek</h1>
             </div>
             <div className="flex items-center gap-2">
-              <CallButton 
+              <CallButton
                 description="Please describe who you're looking for"
                 onTranscription={(text, processed) => {
                   // Show recording message
@@ -266,7 +287,8 @@ export default function Dashboard() {
                           <PersonCard
                             key={person.id}
                             person={person}
-                            onClick={() => setSelectedPerson(person)}
+                            onClick={() => handlePersonClick(person)}
+                            highlight={searchResults.some(result => result.id === person.id)}
                           />
                         ))}
                       </div>
@@ -284,7 +306,7 @@ export default function Dashboard() {
                             <PersonCard
                               key={person.id}
                               person={person}
-                              onClick={() => setSelectedPerson(person)}
+                              onClick={() => handlePersonClick(person)}
                               highlight
                             />
                           ))
@@ -299,10 +321,11 @@ export default function Dashboard() {
           <div className="col-span-6">
             <Card className="h-[calc(100vh-10rem)]">
               <InteractiveMap
-                center={[-74.006, 40.7128]}
-                zoom={14}
+                center={mapCenter}
+                zoom={mapZoom}
                 pins={mockPins}
                 onPinClick={setSelectedPin}
+                highlightedPinId={highlightedPinId}
               />
             </Card>
           </div>
