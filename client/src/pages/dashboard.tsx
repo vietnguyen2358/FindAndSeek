@@ -55,7 +55,7 @@ export default function Dashboard() {
       {/* App Title Bar */}
       <div className="border-b border-border flex-none bg-primary">
         <div className="container mx-auto py-3">
-          <h1 className="text-2xl font-bold text-primary-foreground">Find & Seek Hayward</h1>
+          <h1 className="text-2xl font-bold text-primary-foreground">Find & Seek</h1>
         </div>
       </div>
 
