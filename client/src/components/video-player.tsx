@@ -33,6 +33,10 @@ export function VideoPlayer({
     img.crossOrigin = "anonymous";
 
     img.onload = async () => {
+      // Set canvas dimensions to match the image
+      canvas.width = img.width;
+      canvas.height = img.height;
+
       // Draw the image
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       imageRef.current = img;
@@ -101,16 +105,16 @@ export function VideoPlayer({
     };
 
     // Use the camera image based on camera ID
-    img.src = cameraImages[cameraId] || cameraImages[1];
+    const imageUrl = cameraImages[cameraId as keyof typeof cameraImages] || cameraImages[1];
+    console.log('Loading camera image:', imageUrl);
+    img.src = imageUrl;
 
   }, [showDetections, onPersonsDetected, cameraId]);
 
   return (
     <canvas
       ref={canvasRef}
-      width={640}
-      height={480}
-      className="w-full h-full bg-black rounded-lg"
+      className="w-full h-full bg-black rounded-lg object-contain"
     />
   );
 }
