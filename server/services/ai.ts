@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import fetch from "node-fetch";
 import { spawn } from 'child_process';
 import path from 'path';
 
@@ -30,60 +31,45 @@ interface ImageAnalysisResult {
   summary: string;
 }
 
-// Helper function to crop an image based on bounding box
-function cropImageFromBase64(base64Image: string, bbox: [number, number, number, number]): string {
-  // Convert base64 to Buffer
-  const imageBuffer = Buffer.from(base64Image, 'base64');
-
-  // In a real implementation, this would use sharp or canvas to crop the image
-  // For now, we'll return the original image segment
-  return base64Image;
-}
-
-// First stage: Detect people using Roboflow via Python script
-async function detectPeopleWithRoboflow(base64Image: string): Promise<{
+// First stage: Detect people using Roboflow API
+async function detectPeopleWithRoboflow(imageUrl: string): Promise<{
   bbox: [number, number, number, number];
   confidence: number;
 }[]> {
   try {
     console.log('Starting Roboflow person detection...');
 
-    return new Promise((resolve, reject) => {
-      const pythonProcess = spawn('python3', [
-        path.join(__dirname, 'roboflow_detector.py')
-      ]);
-
-      let output = '';
-
-      pythonProcess.stdout.on('data', (data) => {
-        output += data.toString();
-      });
-
-      pythonProcess.stderr.on('data', (data) => {
-        console.error('Python error:', data.toString());
-      });
-
-      pythonProcess.on('close', (code) => {
-        if (code !== 0) {
-          console.error('Python process exited with code', code);
-          return reject(new Error('Roboflow detection failed'));
+    const response = await fetch('https://detect.roboflow.com/infer/workflows/mizantech-bww5d/detect-count-and-visualize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        api_key: '3RyAsQaKrfI80jA1oi9Z',
+        inputs: {
+          "image": { "type": "url", "value": imageUrl }
         }
-
-        try {
-          const result = JSON.parse(output);
-          if (!result.success) {
-            return reject(new Error(result.error));
-          }
-          resolve(result.detections);
-        } catch (error) {
-          reject(error);
-        }
-      });
-
-      // Send base64 image to Python script
-      pythonProcess.stdin.write(base64Image);
-      pythonProcess.stdin.end();
+      })
     });
+
+    const result = await response.json();
+    console.log('Roboflow API response:', result);
+
+    // Extract and normalize person detections
+    const detections = (result.predictions || [])
+      .filter(pred => pred.class === "person")
+      .map(pred => ({
+        bbox: [
+          pred.x / result.image.width,
+          pred.y / result.image.height,
+          pred.width / result.image.width,
+          pred.height / result.image.height
+        ] as [number, number, number, number],
+        confidence: pred.confidence
+      }));
+
+    console.log(`Found ${detections.length} people in the image`);
+    return detections;
   } catch (error) {
     console.error("Error detecting people with Roboflow:", error);
     return [];
@@ -91,7 +77,7 @@ async function detectPeopleWithRoboflow(base64Image: string): Promise<{
 }
 
 // Second stage: Analyze each detected person with GPT-4 Vision
-async function analyzePersonWithGPT4(base64Image: string, bbox: [number, number, number, number]): Promise<{
+async function analyzePersonWithGPT4(imageUrl: string, bbox: [number, number, number, number]): Promise<{
   description: string;
   details: {
     age: string;
@@ -103,13 +89,13 @@ async function analyzePersonWithGPT4(base64Image: string, bbox: [number, number,
 }> {
   try {
     console.log('Starting GPT-4 Vision analysis for detected person...');
-    const croppedImage = cropImageFromBase64(base64Image, bbox);
+
     const response = await openai.chat.completions.create({
       model: "gpt-4-vision-preview",
       messages: [
         {
           role: "system",
-          content: `Analyze this cropped image of a person and provide detailed information in the following JSON format:
+          content: `Analyze this detected person and provide a detailed description in JSON format:
           {
             "description": "Brief one-line description",
             "details": {
@@ -117,7 +103,7 @@ async function analyzePersonWithGPT4(base64Image: string, bbox: [number, number,
               "clothing": "Detailed clothing description",
               "environment": "Immediate surroundings and context",
               "movement": "Direction and type of movement",
-              "distinctive_features": ["List", "of", "notable", "characteristics"]
+              "distinctive_features": ["List of notable characteristics"]
             }
           }`
         },
@@ -126,7 +112,7 @@ async function analyzePersonWithGPT4(base64Image: string, bbox: [number, number,
           content: [
             {
               type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${croppedImage}` }
+              image_url: { url: imageUrl }
             }
           ]
         }
@@ -153,16 +139,16 @@ async function analyzePersonWithGPT4(base64Image: string, bbox: [number, number,
   }
 }
 
-export async function analyzeImage(base64Image: string): Promise<ImageAnalysisResult> {
+export async function analyzeImage(imageUrl: string): Promise<ImageAnalysisResult> {
   try {
     console.log('Starting image analysis pipeline...');
-    // First detect all people using Roboflow
-    const detections = await detectPeopleWithRoboflow(base64Image);
+    // First detect all people using Roboflow API
+    const detections = await detectPeopleWithRoboflow(imageUrl);
     console.log('Roboflow detections:', detections);
 
     // Then analyze each detected person with GPT-4 Vision
     const analysisPromises = detections.map(async (detection) => {
-      const analysis = await analyzePersonWithGPT4(base64Image, detection.bbox);
+      const analysis = await analyzePersonWithGPT4(imageUrl, detection.bbox);
       return {
         ...detection,
         ...analysis

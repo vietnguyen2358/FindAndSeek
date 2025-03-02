@@ -37,9 +37,6 @@ export function VideoPlayer({
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       imageRef.current = img;
 
-      // Get the frame data and send for AI analysis
-      const frameData = canvas.toDataURL("image/jpeg").split(",")[1];
-
       try {
         const response = await fetch('/api/analyze-frame', {
           method: 'POST',
@@ -47,7 +44,7 @@ export function VideoPlayer({
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            frameData,
+            imageUrl: img.src,
             timestamp: new Date().toISOString()
           })
         });

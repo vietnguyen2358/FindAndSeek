@@ -161,15 +161,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/analyze-frame", async (req, res) => {
     try {
       const schema = z.object({
-        frameData: z.string(),
+        imageUrl: z.string(),
         timestamp: z.string()
       });
 
-      const { frameData, timestamp } = schema.parse(req.body);
-      const analysis = await VideoProcessor.processFrame(frameData, timestamp);
+      const { imageUrl, timestamp } = schema.parse(req.body);
+
+      // Use our AI service to analyze the frame
+      const analysis = await analyzeImage(imageUrl);
 
       res.json(analysis);
     } catch (error: any) {
+      console.error("Error analyzing frame:", error);
       res.status(400).json({ error: error.message });
     }
   });
