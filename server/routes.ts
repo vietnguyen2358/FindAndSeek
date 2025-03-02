@@ -184,6 +184,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add the new search parsing endpoint
+  app.post("/api/parse-search", async (req, res) => {
+    try {
+      console.log('Received search parsing request:', req.body);
+
+      const schema = z.object({
+        query: z.string()
+      });
+
+      const { query } = schema.parse(req.body);
+
+      const response = await openai.chat.completions.create({
+        model: "grok-2-1212",
+        messages: [
+          {
+            role: "system",
+            content: `Parse the search query and extract structured filters in this format:
+            {
+              "filters": [
+                {"category": "clothing", "value": "specific clothing item or color"},
+                {"category": "physical", "value": "physical description"},
+                {"category": "location", "value": "location mentioned"},
+                {"category": "time", "value": "time or timeframe mentioned"},
+                {"category": "age", "value": "age or age range"},
+                {"category": "action", "value": "what the person was doing"}
+              ]
+            }
+            Only include filters that are actually mentioned in the query.`
+          },
+          {
+            role: "user",
+            content: query
+          }
+        ],
+        response_format: { type: "json_object" }
+      });
+
+      const result = JSON.parse(response.choices[0].message.content || "{}");
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error parsing search query:", error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -34,6 +34,11 @@ export interface Alert {
   confidence?: number;
 }
 
+export interface SearchFilter {
+  category: 'clothing' | 'physical' | 'location' | 'time' | 'age' | 'action';
+  value: string;
+}
+
 export interface AIAnalysisResult {
   entities: string[];
   locations: string[];

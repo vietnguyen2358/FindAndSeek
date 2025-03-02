@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Mic, Send, Camera, Bell, UserSearch, Phone, PhoneOff } from "lucide-react";
 import { mockPins, mockDetections, personImages } from "@/lib/mockData";
-import type { DetectedPerson, MapPin } from "@shared/types";
+import type { DetectedPerson, MapPin, SearchFilter } from "@shared/types"; // Assuming SearchFilter type is defined here
 import {
   Dialog,
   DialogContent,
@@ -28,11 +28,10 @@ export default function Dashboard() {
   const [transcription, setTranscription] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const handleSearch = (filters: string[]) => {
-    const results = mockDetections.filter(person => {
-      const searchText = `${person.description} ${person.details.clothing} ${person.details.distinctive_features.join(' ')}`.toLowerCase();
-      return filters.some(filter => searchText.includes(filter.toLowerCase()));
-    });
+  const handleSearch = (filters: SearchFilter[]) => {
+    const results = mockDetections.filter(person =>
+      matchPersonToFilters(person, filters)
+    );
     setSearchResults(results);
   };
 
@@ -278,4 +277,13 @@ function PersonCard({ person, onClick }: { person: DetectedPerson; onClick: () =
       </CardContent>
     </Card>
   );
+}
+
+// Placeholder for the missing function.  This needs a proper implementation.
+function matchPersonToFilters(person: DetectedPerson, filters: SearchFilter[]): boolean {
+  //  Implement your filtering logic here.  This is a crucial part that needs to be defined
+  // based on how the SearchFilter type and the person object are structured.
+  //Example:
+  const searchText = `${person.description} ${person.details.clothing} ${person.details.distinctive_features.join(' ')}`.toLowerCase();
+  return filters.some(filter => searchText.includes(filter.toLowerCase()));
 }
