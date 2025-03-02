@@ -23,6 +23,7 @@ interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
+  isAudio?: boolean;
 }
 
 export default function Dashboard() {
@@ -137,18 +138,30 @@ export default function Dashboard() {
   };
 
   const handleVoiceTranscription = (text: string) => {
+    // Show recording indicator
+    setChatMessages(prev => [...prev, {
+      role: 'system',
+      content: '🎙️ Recording your message...',
+      timestamp: new Date().toLocaleString(),
+      isAudio: true
+    }]);
+
+    // Show transcribed text
     setChatMessages(prev => [...prev, {
       role: 'user',
       content: text,
-      timestamp: new Date().toLocaleString()
+      timestamp: new Date().toLocaleString(),
+      isAudio: true
     }]);
 
+    // Show processing indicator
     setChatMessages(prev => [...prev, {
       role: 'system',
-      content: '🎙️ Processing your voice message...',
+      content: '🤖 AI Assistant is analyzing your message...',
       timestamp: new Date().toLocaleString()
     }]);
 
+    // Process the transcription as a search
     handleSearch(text);
   };
 
@@ -288,8 +301,11 @@ export default function Dashboard() {
                               : message.role === 'system'
                               ? 'bg-muted text-muted-foreground'
                               : 'bg-accent'
-                          }`}
+                          } ${message.isAudio ? 'border-2 border-primary/20' : ''}`}
                         >
+                          {message.isAudio && message.role === 'user' && (
+                            <span className="block text-xs opacity-60 mb-1">🎙️ Voice Message</span>
+                          )}
                           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                           <p className="text-xs opacity-60 mt-1">
                             {message.timestamp}
@@ -302,7 +318,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2 pt-4">
                   <Input
                     className="flex-1"
-                    placeholder="Describe who you're looking for..."
+                    placeholder="Type or use voice to describe who you're looking for..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
