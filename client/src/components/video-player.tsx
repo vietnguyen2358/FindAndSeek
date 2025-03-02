@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import type { DetectedPerson } from "@shared/types";
-import { ObjectDetector } from "@/lib/objectDetection";
 import { cameraImages } from "@/lib/mockData";
 
 interface VideoPlayerProps {
@@ -38,63 +37,69 @@ export function VideoPlayer({
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       imageRef.current = img;
 
-      // Detect people using TensorFlow
-      const detectedPeople = await ObjectDetector.detectPeople(img);
+      // Get the frame data and send for AI analysis
+      const frameData = canvas.toDataURL("image/jpeg").split(",")[1];
 
-      if (showDetections) {
-        // Draw detection boxes
-        detectedPeople.forEach(({ bbox, confidence }) => {
-          const [x, y, width, height] = bbox;
-
-          // Draw semi-transparent background
-          ctx.fillStyle = `rgba(59, 130, 246, ${confidence * 0.2})`;
-          ctx.fillRect(
-            x * canvas.width,
-            y * canvas.height,
-            width * canvas.width,
-            height * canvas.height
-          );
-
-          // Draw border
-          ctx.strokeStyle = '#3b82f6';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(
-            x * canvas.width,
-            y * canvas.height,
-            width * canvas.width,
-            height * canvas.height
-          );
-
-          // Show confidence
-          ctx.fillStyle = "white";
-          ctx.font = "12px Arial";
-          ctx.fillText(
-            `${Math.round(confidence * 100)}%`,
-            x * canvas.width,
-            y * canvas.height - 5
-          );
+      try {
+        const response = await fetch('/api/analyze-frame', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            frameData,
+            timestamp: new Date().toISOString()
+          })
         });
-      }
 
-      // For each detection, crop the image and send to backend for analysis
-      if (onPersonsDetected) {
-        const peopleWithCrops = detectedPeople.map((detection, index) => ({
-          id: index + 1,
-          time: new Date().toLocaleString(),
-          description: "Person detected",
-          confidence: detection.confidence,
-          bbox: detection.bbox,
-          thumbnail: ObjectDetector.cropDetection(canvas, detection.bbox),
-          details: {
-            age: "Analyzing...",
-            clothing: "Analyzing...",
-            environment: "Analyzing...",
-            movement: "Analyzing...",
-            distinctive_features: []
-          }
-        }));
+        if (!response.ok) {
+          throw new Error('Failed to analyze frame');
+        }
 
-        onPersonsDetected(peopleWithCrops);
+        const analysis = await response.json();
+
+        if (showDetections && analysis.detections) {
+          // Draw detection boxes
+          analysis.detections.forEach(({ bbox, confidence }) => {
+            const [x, y, width, height] = bbox;
+
+            // Draw semi-transparent background
+            ctx.fillStyle = `rgba(59, 130, 246, ${confidence * 0.2})`;
+            ctx.fillRect(
+              x * canvas.width,
+              y * canvas.height,
+              width * canvas.width,
+              height * canvas.height
+            );
+
+            // Draw border
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+              x * canvas.width,
+              y * canvas.height,
+              width * canvas.width,
+              height * canvas.height
+            );
+
+            // Show confidence
+            ctx.fillStyle = "white";
+            ctx.font = "12px Arial";
+            ctx.fillText(
+              `${Math.round(confidence * 100)}%`,
+              x * canvas.width,
+              y * canvas.height - 5
+            );
+          });
+        }
+
+        // Send the analyzed persons data to parent component
+        if (onPersonsDetected && analysis.detections) {
+          onPersonsDetected(analysis.detections);
+        }
+
+      } catch (error) {
+        console.error('Error analyzing frame:', error);
       }
     };
 
