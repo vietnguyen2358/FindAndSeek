@@ -77,11 +77,27 @@ export default function Dashboard() {
       if (result.matches?.length > 0) {
         setSearchResults(result.matches);
 
+        // Find the highest scoring match
+        const bestMatch = result.matches.reduce((prev: any, current: any) => 
+          (current.matchScore || 0) > (prev.matchScore || 0) ? current : prev
+        );
+
+        // Find corresponding camera pin and center map
+        const cameraPin = mockPins.find(pin => 
+          pin.type === "camera" && pin.id === bestMatch.cameraId
+        );
+
+        if (cameraPin) {
+          setHighlightedPinId(cameraPin.id);
+          setMapCenter([cameraPin.lng, cameraPin.lat]);
+          setMapZoom(16); // Zoom in closer to the match
+        }
+
         setChatMessages(prev => [
           ...prev,
           {
             role: 'assistant',
-            content: result.analysis.join('\n'),
+            content: `Found matches! Centering on best match at ${cameraPin?.location || 'location'}.\n\n${result.analysis.join('\n')}`,
             timestamp: new Date().toLocaleString()
           }
         ]);
@@ -182,7 +198,7 @@ export default function Dashboard() {
       // Highlight the camera pin
       setHighlightedPinId(cameraPin.id);
 
-      // Center map on the camera location
+      // Center map on the camera location with animation
       setMapCenter([cameraPin.lng, cameraPin.lat]);
       setMapZoom(16); // Zoom in closer
     }
