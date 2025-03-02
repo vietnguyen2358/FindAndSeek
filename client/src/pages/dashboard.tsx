@@ -5,7 +5,7 @@ import { VideoPlayer } from "@/components/video-player";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Play, SkipBack, SkipForward, Eye, EyeOff, Bell, Camera } from "lucide-react";
+import { Play, SkipBack, SkipForward, Eye, EyeOff, Bell, Camera, Phone } from "lucide-react";
 import { mockPins, mockDetections } from "@/lib/mockData";
 import type { DetectedPerson } from "@shared/types";
 import {
@@ -16,6 +16,28 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// Mock transcript data
+const mockTranscripts = [
+  {
+    id: 1,
+    time: "2 minutes ago",
+    caller: "Dispatch",
+    message: "Received report of suspicious activity near Transit Center",
+  },
+  {
+    id: 2,
+    time: "5 minutes ago",
+    caller: "Unit 247",
+    message: "Confirming visual on suspect matching description. Red jacket, male, approximately 5'10\"",
+  },
+  {
+    id: 3,
+    time: "8 minutes ago",
+    caller: "Dispatch",
+    message: "All units be advised: Subject was last seen heading east on Main Street",
+  },
+];
 
 export default function Dashboard() {
   const [selectedCamera, setSelectedCamera] = useState<{
@@ -30,35 +52,17 @@ export default function Dashboard() {
 
   return (
     <div className="h-screen overflow-hidden bg-background flex flex-col">
-      {/* Top Search Bar */}
-      <div className="border-b border-border flex-none">
-        <div className="container mx-auto py-4">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded"
-          />
+      {/* App Title Bar */}
+      <div className="border-b border-border flex-none bg-primary">
+        <div className="container mx-auto py-3">
+          <h1 className="text-2xl font-bold text-primary-foreground">Find & Seek Hayward</h1>
         </div>
       </div>
 
       <div className="container mx-auto py-6 flex-1 min-h-0">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
-          {/* Map */}
-          <div className="lg:col-span-8 h-full">
-            <InteractiveMap
-              center={[-74.006, 40.7128]}
-              zoom={12}
-              pins={mockPins}
-              onPinClick={(pin) =>
-                setSelectedCamera({ id: pin.id, location: pin.location })
-              }
-            />
-          </div>
-
           {/* Combined Camera and Alerts Panel */}
-          <div className="lg:col-span-4 h-full">
+          <div className="lg:col-span-3 h-full">
             <Card className="h-full flex flex-col">
               <CardHeader className="pb-2 flex-none">
                 <Tabs defaultValue="camera" className="w-full">
@@ -200,6 +204,74 @@ export default function Dashboard() {
                   </TabsContent>
                 </Tabs>
               </CardHeader>
+            </Card>
+          </div>
+
+          {/* Map */}
+          <div className="lg:col-span-6 h-full">
+            <div className="aspect-square w-full relative">
+              <div className="absolute inset-0">
+                <InteractiveMap
+                  center={[-74.006, 40.7128]}
+                  zoom={12}
+                  pins={mockPins}
+                  onPinClick={(pin) =>
+                    setSelectedCamera({ id: pin.id, location: pin.location })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Communications Panel */}
+          <div className="lg:col-span-3 h-full">
+            <Card className="h-full flex flex-col">
+              <CardHeader className="pb-2 flex-none">
+                <CardTitle className="text-xl font-semibold flex items-center gap-2">
+                  <Phone className="h-5 w-5" />
+                  Communications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col">
+                <ScrollArea className="flex-1">
+                  <div className="space-y-4">
+                    {mockTranscripts.map((transcript) => (
+                      <Card key={transcript.id}>
+                        <CardContent className="p-4">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{transcript.caller}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {transcript.time}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {transcript.message}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </ScrollArea>
+                
+                {/* Search Description Panel */}
+                <div className="mt-4 pt-4 border-t">
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-sm">Search Person Description</h3>
+                    <input
+                      type="text"
+                      placeholder="Enter description (e.g. red jacket, male, 5'10'')"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full p-2 border border-gray-300 rounded"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Search for specific characteristics, clothing, or physical descriptions
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
             </Card>
           </div>
         </div>
