@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { mockVideoFrames } from "@/lib/mockData";
 import type { DetectedPerson } from "@shared/types";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -18,25 +17,29 @@ export function VideoPlayer({
   onPersonsDetected 
 }: VideoPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [currentFrame, setCurrentFrame] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Process frame and get AI analysis
-  const processFrame = async (frameData: string, timestamp: string) => {
+  // Process image and get AI analysis
+  const processImage = async (imageData: string) => {
     try {
       setIsProcessing(true);
-      const response = await apiRequest<{ detectedPersons: DetectedPerson[] }>({
+      const response = await apiRequest({
         url: "/api/analyze-frame",
         method: "POST",
-        data: { frameData, timestamp }
+        body: JSON.stringify({ 
+          frameData: imageData,
+          timestamp: new Date().toISOString()
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
-      if (response.detectedPersons && onPersonsDetected) {
-        onPersonsDetected(response.detectedPersons);
+      if (response && onPersonsDetected) {
+        onPersonsDetected(response.detectedPersons || []);
       }
     } catch (error) {
-      console.error("Error processing frame:", error);
+      console.error("Error processing image:", error);
     } finally {
       setIsProcessing(false);
     }
@@ -51,15 +54,14 @@ export function VideoPlayer({
 
     const img = new Image();
     img.crossOrigin = "anonymous";
-    const frameSource = mockVideoFrames[currentFrame];
 
     img.onload = () => {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-      // For the first frame (real image), process it with AI
-      if (currentFrame === 0 && !isProcessing) {
-        const frameData = canvas.toDataURL("image/jpeg").split(",")[1];
-        processFrame(frameData, new Date().toISOString());
+      // Process the image once it's loaded
+      if (!isProcessing) {
+        const imageData = canvas.toDataURL("image/jpeg").split(",")[1];
+        processImage(imageData);
       }
 
       if (showDetections) {
@@ -97,16 +99,10 @@ export function VideoPlayer({
       }
     };
 
-    img.src = frameSource;
+    // Use the crosswalk image directly
+    img.src = "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=";
 
-    const interval = setInterval(() => {
-      if (isPlaying) {
-        setCurrentFrame((prev) => (prev + 1) % mockVideoFrames.length);
-      }
-    }, 1000 / 30); // 30fps
-
-    return () => clearInterval(interval);
-  }, [currentFrame, detections, isPlaying, showDetections, isProcessing]);
+  }, [detections, showDetections, isProcessing, onPersonsDetected]);
 
   return (
     <canvas

@@ -19,14 +19,14 @@ export class VideoProcessor {
     try {
       // First stage: Detect all people in the frame
       const detections = await this.detectPeopleInFrame(frameData);
-      
+
       // Second stage: Analyze each detected person
-      const analysisPromises = detections.map((detection, index) => 
+      const analysisPromises = detections.map((detection, index) =>
         this.analyzeDetectedPerson(frameData, detection.bbox, index, timestamp)
       );
-      
+
       const detectedPersons = await Promise.all(analysisPromises);
-      
+
       return {
         detectedPersons,
         timestamp
@@ -114,12 +114,12 @@ export class VideoProcessor {
       });
 
       const analysis = JSON.parse(response.choices[0].message.content || "{}");
-      
+
       return {
         id: personId,
         time: timestamp,
         description: analysis.description || "Person detected",
-        confidence: bbox[4] || 0.8,
+        confidence: 0.8,
         thumbnail: frameData,
         bbox: bbox,
         details: analysis.details || {
