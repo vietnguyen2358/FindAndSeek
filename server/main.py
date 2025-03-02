@@ -1,6 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 import os
@@ -33,8 +32,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static frontend files
-app.mount("/", StaticFiles(directory="dist/public", html=True), name="static")
 
 # Pydantic models for request/response validation
 class DetectedPersonDetails(BaseModel):
