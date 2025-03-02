@@ -268,9 +268,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             {
               role: "user",
               content: `Search: "${query}"
-Matches: ${topMatches.map(match => 
-  `${match.description} wearing ${match.details.clothing}`
-).join('\n')}`
+Matches: ${topMatches.map(match =>
+                `${match.description} wearing ${match.details.clothing}`
+              ).join('\n')}`
             }
           ]
         });
@@ -288,7 +288,7 @@ Matches: ${topMatches.map(match =>
 
     } catch (error: any) {
       console.error("Search error:", error);
-      res.status(400).json({ 
+      res.status(400).json({
         error: error.message,
         matches: [],
         analysis: ['Error processing search']
@@ -306,12 +306,25 @@ import { z } from "zod";
 import { findSimilarDetections, analyzeClothingDescription } from "./services/similarity-search";
 import type { SearchCriteria } from "@shared/types";
 import OpenAI from "openai";
+import { handleIncomingCall, processTranscription, initiateCall } from './services/call-service';
 
 const openai2 = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 const router = Router();
+
+router.post("/api/call/incoming", handleIncomingCall);
+router.post("/api/call/process-transcription", processTranscription);
+router.post("/api/call/initiate", async (req, res) => {
+  try {
+    const { phoneNumber, message } = req.body;
+    await initiateCall(phoneNumber, message);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to initiate call" });
+  }
+});
 
 router.post("/api/search", async (req, res) => {
   try {

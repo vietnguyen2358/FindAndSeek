@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
 import { PersonCard } from "@/components/person-card";
+import { CallButton } from "@/components/call-button";
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -147,6 +148,7 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold">Person Search & Tracking</h1>
             </div>
             <div className="flex items-center gap-2">
+              <CallButton />
               <Button variant="outline" size="sm">
                 <History className="w-4 h-4 mr-2" />
                 Search History
