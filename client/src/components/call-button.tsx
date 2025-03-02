@@ -34,10 +34,15 @@ export function CallButton({ description, onTranscription }: CallButtonProps) {
 
     setIsLoading(true);
     try {
+      // Format phone number to ensure it has + prefix
+      const formattedNumber = phoneNumber.trim().startsWith('+') 
+        ? phoneNumber.trim() 
+        : `+${phoneNumber.trim()}`;
+
       const response = await apiRequest('/api/call/initiate', {
         method: 'POST',
         body: JSON.stringify({
-          phoneNumber: phoneNumber.trim(),
+          phoneNumber: formattedNumber,
           message: description || "Please describe who you are looking for."
         })
       });
@@ -49,12 +54,11 @@ export function CallButton({ description, onTranscription }: CallButtonProps) {
         });
         setOpen(false);
 
-        // If transcription is successful, notify parent
-        if (response.description && onTranscription) {
-          onTranscription(response.description);
+        if (response.transcription && onTranscription) {
+          onTranscription(response.transcription);
         }
       } else {
-        throw new Error("Failed to initiate call");
+        throw new Error(response.error || "Failed to initiate call");
       }
     } catch (error) {
       console.error("Call error:", error);
@@ -88,10 +92,9 @@ export function CallButton({ description, onTranscription }: CallButtonProps) {
             <Input
               placeholder="Phone number (e.g., +1234567890)"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d+]/g, ''))}
               type="tel"
-              pattern="[+][0-9]{10,}"
-              title="Please enter phone number with country code (e.g., +1234567890)"
+              maxLength={15}
             />
             <Button 
               onClick={handleCall}

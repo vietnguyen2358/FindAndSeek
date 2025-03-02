@@ -45,7 +45,7 @@ export async function transcribeAudio(audioUrl: string): Promise<TranscriptionRe
 
     return {
       text: transcription.text,
-      confidence: transcription.confidence || 0
+      confidence: 0.95 // Whisper doesn't provide confidence, setting default
     };
   } catch (error) {
     console.error('Error transcribing audio:', error);
@@ -118,22 +118,29 @@ export async function initiateCall(phoneNumber: string, message: string) {
       throw new Error('Twilio phone number not configured');
     }
 
+    // Ensure phone number is in E.164 format
+    const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+
+    const twiml = new twilio.twiml.VoiceResponse();
+    twiml.say({
+      voice: 'alice',
+      language: 'en-US',
+      text: `Welcome to Find & Seek. ${message}`
+    });
+
     await client.calls.create({
-      twiml: new twilio.twiml.VoiceResponse()
-        .say({
-          voice: 'alice',
-          language: 'en-US',
-          text: `Welcome to Find & Seek. ${message}`
-        })
-        .toString(),
-      to: phoneNumber,
-      from: process.env.TWILIO_PHONE_NUMBER
+      twiml: twiml.toString(),
+      to: formattedNumber,
+      from: process.env.TWILIO_PHONE_NUMBER,
     });
 
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error initiating call:', error);
-    throw error;
+    return { 
+      success: false, 
+      error: error.message || 'Failed to initiate call' 
+    };
   }
 }
 
