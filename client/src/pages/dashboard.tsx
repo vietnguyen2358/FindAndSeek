@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
 import { PersonCard } from "@/components/person-card";
 import { VoiceInput } from "@/components/voice-input";
+import { CallButton } from "@/components/call-button";
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -175,6 +176,37 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold">Find & Seek</h1>
             </div>
             <div className="flex items-center gap-2">
+              <CallButton 
+                description="Please describe who you're looking for"
+                onTranscription={(text, processed) => {
+                  // Show recording message
+                  setChatMessages(prev => [...prev, {
+                    role: 'system',
+                    content: '📞 Phone call recorded',
+                    timestamp: new Date().toLocaleString()
+                  }]);
+
+                  // Show transcribed message
+                  setChatMessages(prev => [...prev, {
+                    role: 'user',
+                    content: text,
+                    timestamp: new Date().toLocaleString(),
+                    isAudio: true
+                  }]);
+
+                  // Show AI processed response
+                  if (processed) {
+                    setChatMessages(prev => [...prev, {
+                      role: 'assistant',
+                      content: processed,
+                      timestamp: new Date().toLocaleString()
+                    }]);
+
+                    // Process as a search query
+                    handleSearch(processed);
+                  }
+                }}
+              />
               <Button variant="outline" size="sm">
                 <History className="w-4 h-4 mr-2" />
                 Search History

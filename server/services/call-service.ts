@@ -1,7 +1,6 @@
 import twilio from 'twilio';
 import type { Request, Response } from 'express';
 import fetch from 'node-fetch';
-import { storage } from '../storage';
 import OpenAI from 'openai';
 
 const client = twilio(
@@ -17,7 +16,11 @@ export async function handleIncomingCall(req: Request, res: Response) {
   try {
     const twiml = new twilio.twiml.VoiceResponse();
 
-    twiml.say('Welcome to Find & Seek. Please describe who you are looking for.');
+    twiml.say({
+      voice: 'alice',
+      language: 'en-US',
+      text: 'Welcome to Find & Seek. Please describe who you are looking for.'
+    });
     twiml.record({
       maxLength: 60,
       action: '/api/call/transcribe',
@@ -121,7 +124,11 @@ export async function processTranscription(req: Request, res: Response) {
       });
     }
 
-    res.json({ success: true, description: processedDescription });
+    res.json({ 
+      success: true, 
+      transcription: transcriptionText,
+      processed: processedDescription 
+    });
   } catch (error) {
     console.error('Error processing transcription:', error);
     res.status(500).json({ error: 'Failed to process transcription' });

@@ -13,7 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface CallButtonProps {
   description?: string;
-  onTranscription?: (transcription: string) => void;
+  onTranscription?: (transcription: string, processed?: string) => void;
 }
 
 export function CallButton({ description, onTranscription }: CallButtonProps) {
@@ -55,7 +55,7 @@ export function CallButton({ description, onTranscription }: CallButtonProps) {
         setOpen(false);
 
         if (response.transcription && onTranscription) {
-          onTranscription(response.transcription);
+          onTranscription(response.transcription, response.processed);
         }
       } else {
         throw new Error(response.error || "Failed to initiate call");
