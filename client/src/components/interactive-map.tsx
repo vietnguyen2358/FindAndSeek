@@ -114,7 +114,6 @@ export function InteractiveMap({
           <strong>${pin.type === "camera" ? "Camera Location" : "Last Seen"}</strong>
           ${pin.timestamp ? `<br>Time: ${pin.timestamp}` : ""}
           ${pin.location ? `<br>Location: ${pin.location}` : ""}
-          ${pin.detectionCount ? `<br>Detections: ${pin.detectionCount}` : ""}
         </div>
       `;
 
@@ -177,20 +176,6 @@ export function InteractiveMap({
   return (
     <Card className="w-full h-[calc(100vh-10rem)] overflow-hidden border-border bg-background relative">
       <div ref={mapContainer} className="w-full h-full" />
-      {/* Map Legend */}
-      <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur-sm p-3 rounded-lg border border-border">
-        <p className="text-xs font-medium mb-2">Map Legend</p>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-red-500" />
-            <span className="text-xs">Camera Location</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-blue-500" />
-            <span className="text-xs">Person Detections</span>
-          </div>
-        </div>
-      </div>
     </Card>
   );
 }

@@ -18,7 +18,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PersonCard } from "@/components/person-card";
 import { VoiceInput } from "@/components/voice-input";
 import { CallButton } from "@/components/call-button";
-
+import { mockPins } from "@/lib/mockData";
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -30,8 +30,8 @@ interface ChatMessage {
 export default function Dashboard() {
   const [selectedPerson, setSelectedPerson] = useState<DetectedPerson | null>(null);
   const [selectedPin, setSelectedPin] = useState<MapPinType | null>(null);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([-74.006, 40.7128]);
-  const [mapZoom, setMapZoom] = useState(14);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([-73.9855, 40.7580]); // Times Square
+  const [mapZoom, setMapZoom] = useState(12);
   const [detections, setDetections] = useState<DetectedPerson[]>([]);
   const [searchResults, setSearchResults] = useState<DetectedPerson[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,6 +46,7 @@ export default function Dashboard() {
     }
   ]);
 
+  // Scroll chat to bottom when messages change
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current;
@@ -183,7 +184,7 @@ export default function Dashboard() {
               <InteractiveMap
                 center={mapCenter}
                 zoom={mapZoom}
-                pins={[]}
+                pins={mockPins}
                 onPinClick={setSelectedPin}
                 highlightedPinId={highlightedPinId}
               />
@@ -233,14 +234,18 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2 pt-4">
                   <Input
                     className="flex-1"
-                    placeholder="Type or use voice to describe who you're looking for..."
+                    placeholder="Type your search..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
                     disabled={isProcessing}
                   />
                   <VoiceInput
-                    onTranscription={handleVoiceTranscription}
+                    onTranscription={(text: string, processed?: string) => {
+                      if (processed) {
+                        handleSearch(processed);
+                      }
+                    }}
                     disabled={isProcessing}
                   />
                   <Button
