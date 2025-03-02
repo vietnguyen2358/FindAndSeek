@@ -1,7 +1,6 @@
 import OpenAI from "openai";
 import fetch from "node-fetch";
-import { spawn } from 'child_process';
-import path from 'path';
+import sharp from "sharp";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -15,11 +14,18 @@ interface AnalysisResult {
   confidence: number;
 }
 
+interface MovementPrediction {
+  radius: number;
+  probableLocations: { lat: number; lng: number; probability: number }[];
+  timeElapsed: number;
+}
+
 interface ImageAnalysisResult {
   detections: {
-    confidence: number;
     bbox: [number, number, number, number];
+    confidence: number;
     description: string;
+    croppedImage: string;
     details: {
       age: string;
       clothing: string;
@@ -29,6 +35,43 @@ interface ImageAnalysisResult {
     };
   }[];
   summary: string;
+}
+
+// Helper function to crop an image based on bounding box
+async function cropImageFromUrl(imageUrl: string, bbox: [number, number, number, number]): Promise<string> {
+  try {
+    // Download the image
+    const response = await fetch(imageUrl);
+    const imageBuffer = await response.buffer();
+
+    // Get image dimensions
+    const metadata = await sharp(imageBuffer).metadata();
+    const width = metadata.width || 0;
+    const height = metadata.height || 0;
+
+    // Calculate crop dimensions
+    const [x, y, w, h] = bbox;
+    const cropX = Math.floor(x * width);
+    const cropY = Math.floor(y * height);
+    const cropWidth = Math.floor(w * width);
+    const cropHeight = Math.floor(h * height);
+
+    // Crop the image
+    const croppedBuffer = await sharp(imageBuffer)
+      .extract({
+        left: cropX,
+        top: cropY,
+        width: cropWidth,
+        height: cropHeight
+      })
+      .toBuffer();
+
+    // Convert to base64
+    return `data:image/jpeg;base64,${croppedBuffer.toString('base64')}`;
+  } catch (error) {
+    console.error("Error cropping image:", error);
+    return imageUrl;
+  }
 }
 
 // First stage: Detect people using Roboflow API
@@ -79,6 +122,7 @@ async function detectPeopleWithRoboflow(imageUrl: string): Promise<{
 // Second stage: Analyze each detected person with GPT-4 Vision
 async function analyzePersonWithGPT4(imageUrl: string, bbox: [number, number, number, number]): Promise<{
   description: string;
+  croppedImage: string;
   details: {
     age: string;
     clothing: string;
@@ -90,12 +134,15 @@ async function analyzePersonWithGPT4(imageUrl: string, bbox: [number, number, nu
   try {
     console.log('Starting GPT-4 Vision analysis for detected person...');
 
+    // First crop the image
+    const croppedImage = await cropImageFromUrl(imageUrl, bbox);
+
     const response = await openai.chat.completions.create({
       model: "gpt-4-vision-preview",
       messages: [
         {
           role: "system",
-          content: `Analyze this detected person and provide a detailed description in JSON format:
+          content: `Analyze this cropped image of a person and provide detailed information in the following JSON format:
           {
             "description": "Brief one-line description",
             "details": {
@@ -112,7 +159,7 @@ async function analyzePersonWithGPT4(imageUrl: string, bbox: [number, number, nu
           content: [
             {
               type: "image_url",
-              image_url: { url: imageUrl }
+              image_url: { url: croppedImage }
             }
           ]
         }
@@ -123,11 +170,15 @@ async function analyzePersonWithGPT4(imageUrl: string, bbox: [number, number, nu
 
     const analysis = JSON.parse(response.choices[0].message.content || "{}");
     console.log('GPT-4 Vision analysis complete');
-    return analysis;
+    return {
+      ...analysis,
+      croppedImage
+    };
   } catch (error) {
     console.error("Error analyzing person with GPT-4:", error);
     return {
       description: "Analysis failed",
+      croppedImage: "",
       details: {
         age: "Unknown",
         clothing: "Not visible",
@@ -171,41 +222,122 @@ export async function analyzeImage(imageUrl: string): Promise<ImageAnalysisResul
   }
 }
 
-// Mock implementations for other functions
+// Basic report analysis using GPT-4
 export async function analyzeReport(text: string): Promise<AnalysisResult> {
-  return {
-    entities: ['Example entity'],
-    locations: ['Example location'],
-    timestamps: [new Date().toISOString()],
-    confidence: 0.95
-  };
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-turbo-preview",
+      messages: [
+        {
+          role: "system",
+          content: `Analyze the given text and extract relevant information in this format:
+          {
+            "entities": ["list of people, clothing, physical descriptions"],
+            "locations": ["mentioned locations, landmarks, areas"],
+            "timestamps": ["dates and times mentioned"],
+            "confidence": 0.95
+          }`
+        },
+        { role: "user", content: text }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(response.choices[0].message.content || "{}");
+  } catch (error) {
+    console.error("Error analyzing report:", error);
+    return {
+      entities: [],
+      locations: [],
+      timestamps: [],
+      confidence: 0
+    };
+  }
 }
 
-export async function matchSearchTerms(searchQuery: string, _detections: any[]): Promise<number[]> {
-  console.log('Mock matchSearchTerms called with query:', searchQuery);
-  return [0, 1]; // Mock matching indices
-}
-
-export async function predictMovement(
-  lastLocation: { lat: number; lng: number },
-  timeElapsed: number,
-  transportMode: string = "walking"
-): Promise<any> {
-  return {
-    radius: timeElapsed * (transportMode === "walking" ? 5 : 30) / 3600,
-    probableLocations: [lastLocation],
-    timeElapsed
-  };
-}
-
+// Utility function for calculating cosine similarity
 export function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length) return 0;
   const dotProduct = a.reduce((acc, val, i) => acc + val * b[i], 0);
   const aMagnitude = Math.sqrt(a.reduce((acc, val) => acc + val * val, 0));
   const bMagnitude = Math.sqrt(b.reduce((acc, val) => acc + val * val, 0));
   return dotProduct / (aMagnitude * bMagnitude);
 }
 
+// Generate embeddings for text using GPT-4
 export async function getEmbeddings(text: string): Promise<number[]> {
-  // Mock implementation returning a simple vector
-  return Array(128).fill(0).map(() => Math.random());
+  try {
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: text,
+      encoding_format: "float"
+    });
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error("Error getting embeddings:", error);
+    return Array(1536).fill(0);
+  }
+}
+
+// Predict possible movement based on time elapsed
+export async function predictMovement(
+  lastLocation: { lat: number; lng: number },
+  timeElapsed: number,
+  transportMode: "walking" | "vehicle" = "walking"
+): Promise<MovementPrediction> {
+  const averageSpeed = transportMode === "walking" ? 5 : 30; // km/h
+  const radius = (timeElapsed / 3600) * averageSpeed; // Convert time to hours and multiply by speed
+
+  // Generate probable locations in a circle around the last known location
+  const numPoints = 8;
+  const probableLocations = Array.from({ length: numPoints }).map((_, i) => {
+    const angle = (2 * Math.PI * i) / numPoints;
+    const distance = radius * (0.7 + 0.3 * Math.random()); // Vary the distance a bit
+    const lat = lastLocation.lat + (distance / 111.32) * Math.cos(angle);
+    const lng = lastLocation.lng + (distance / (111.32 * Math.cos(lastLocation.lat * Math.PI / 180))) * Math.sin(angle);
+    return {
+      lat,
+      lng,
+      probability: 0.5 + 0.5 * Math.random() // Random probability between 0.5 and 1
+    };
+  });
+
+  return {
+    radius,
+    probableLocations,
+    timeElapsed
+  };
+}
+
+// Match search terms against detections
+export async function matchSearchTerms(searchQuery: string, detections: ImageAnalysisResult[]): Promise<number[]> {
+  try {
+    // Get embeddings for the search query
+    const queryEmbedding = await getEmbeddings(searchQuery);
+
+    // Get embeddings for each detection's description
+    const detectionPromises = detections.map(async (d) => {
+      const descriptions = d.detections.map(det => 
+        `${det.description} ${det.details.clothing} ${det.details.distinctive_features.join(" ")}`
+      );
+      return Promise.all(descriptions.map(desc => getEmbeddings(desc)));
+    });
+
+    const detectionEmbeddings = await Promise.all(detectionPromises);
+
+    // Find matches using cosine similarity
+    const matches: number[] = [];
+    detectionEmbeddings.forEach((detection, index) => {
+      const similarities = detection.map(emb => cosineSimilarity(queryEmbedding, emb));
+      const maxSimilarity = Math.max(...similarities);
+      if (maxSimilarity > 0.7) { // Threshold for considering it a match
+        matches.push(index);
+      }
+    });
+
+    return matches;
+  } catch (error) {
+    console.error("Error matching search terms:", error);
+    return [];
+  }
 }

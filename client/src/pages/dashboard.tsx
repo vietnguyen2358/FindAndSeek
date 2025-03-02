@@ -110,7 +110,15 @@ export default function Dashboard() {
                           >
                             <CardContent className="p-3">
                               <div className="flex items-start gap-3">
-                                <div className="w-12 h-12 rounded flex-shrink-0 bg-blue-500/20 border border-blue-500" />
+                                {person.croppedImage ? (
+                                  <img
+                                    src={person.croppedImage}
+                                    alt={`Person ${person.id}`}
+                                    className="w-12 h-12 rounded flex-shrink-0 object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 rounded flex-shrink-0 bg-blue-500/20 border border-blue-500" />
+                                )}
                                 <div>
                                   <div className="flex items-center gap-2">
                                     <p className="font-medium">Person {person.id}</p>
