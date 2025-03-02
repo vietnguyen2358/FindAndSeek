@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { DetectedPerson } from "@shared/types";
+import { ObjectDetector } from "@/lib/objectDetection";
 
 interface VideoPlayerProps {
   detections?: {
@@ -16,6 +17,7 @@ export function VideoPlayer({
   onPersonsDetected 
 }: VideoPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -24,14 +26,21 @@ export function VideoPlayer({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Create a new image element
     const img = new Image();
     img.crossOrigin = "anonymous";
 
-    img.onload = () => {
+    img.onload = async () => {
+      // Draw the image
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      imageRef.current = img;
+
+      // Detect people using TensorFlow
+      const detectedPeople = await ObjectDetector.detectPeople(img);
 
       if (showDetections) {
-        detections.forEach(({ bbox, confidence }) => {
+        // Draw detection boxes
+        detectedPeople.forEach(({ bbox, confidence }) => {
           const [x, y, width, height] = bbox;
 
           // Draw semi-transparent background
@@ -63,12 +72,33 @@ export function VideoPlayer({
           );
         });
       }
+
+      // For each detection, crop the image and send to backend for analysis
+      if (onPersonsDetected) {
+        const peopleWithCrops = detectedPeople.map((detection, index) => ({
+          id: index + 1,
+          time: new Date().toLocaleString(),
+          description: "Person detected",
+          confidence: detection.confidence,
+          bbox: detection.bbox,
+          thumbnail: ObjectDetector.cropDetection(canvas, detection.bbox),
+          details: {
+            age: "Analyzing...",
+            clothing: "Analyzing...",
+            environment: "Analyzing...",
+            movement: "Analyzing...",
+            distinctive_features: []
+          }
+        }));
+
+        onPersonsDetected(peopleWithCrops);
+      }
     };
 
-    // Use the crosswalk image directly
+    // Use the crosswalk image
     img.src = "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=";
 
-  }, [detections, showDetections]);
+  }, [showDetections, onPersonsDetected]);
 
   return (
     <canvas
