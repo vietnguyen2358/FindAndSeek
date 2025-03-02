@@ -324,7 +324,7 @@ Your response must be a valid JSON object with this structure:
 
     } catch (error: any) {
       console.error("Error parsing search query:", error);
-      res.status(400).json({ 
+      res.status(400).json({
         error: error.message,
         filters: [],
         response: "I encountered an error processing your request. Please try again.",
@@ -336,3 +336,67 @@ Your response must be a valid JSON object with this structure:
   const httpServer = createServer(app);
   return httpServer;
 }
+
+import { Router } from "express";
+import { z } from "zod";
+import { findSimilarDetections, analyzeClothingDescription } from "./services/similarity-search";
+import type { SearchCriteria } from "@shared/types";
+
+const router = Router();
+
+router.post("/api/search", async (req, res) => {
+  try {
+    const schema = z.object({
+      description: z.string(),
+      timeRange: z.object({
+        start: z.string(),
+        end: z.string()
+      }).optional(),
+      location: z.string().optional()
+    });
+
+    const criteria: SearchCriteria = schema.parse(req.body);
+
+    // First, analyze the clothing description
+    const enhancedDescription = await analyzeClothingDescription(criteria.description);
+    criteria.description = enhancedDescription;
+
+    // Perform similarity search
+    const matches = await findSimilarDetections(criteria);
+
+    // Get ChatGPT to explain the matches
+    const analysis = await openai.chat.completions.create({
+      model: "gpt-4-turbo-preview",
+      messages: [
+        {
+          role: "system",
+          content: "Analyze why these detections match the search criteria. Focus on clothing matches and any distinctive features."
+        },
+        {
+          role: "user",
+          content: `Search criteria: "${criteria.description}"
+
+Matches found:
+${matches.map((match, i) => `
+Match ${i + 1} (${Math.round(match.similarity * 100)}% similar):
+- Location: ${match.detection.detectionLocation}
+- Description: ${match.detection.description}
+- Clothing: ${match.detection.clothingDescription}
+`).join('\n')}`
+        }
+      ]
+    });
+
+    res.json({
+      matches,
+      analysis: analysis.choices[0].message.content,
+      enhancedDescription
+    });
+
+  } catch (error) {
+    console.error("Search error:", error);
+    res.status(500).json({ error: "Failed to process search request" });
+  }
+});
+
+export default router;

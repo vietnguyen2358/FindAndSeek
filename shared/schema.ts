@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, json, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, json, integer, jsonb, vector } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -47,13 +47,22 @@ export const personDetections = pgTable("person_detections", {
   bbox: json("bbox").notNull(),
   details: jsonb("details").notNull(),
   cameraId: integer("camera_id"),
-  matchScore: json("match_score")
+  matchScore: json("match_score"),
+  // Add embedding for similarity search
+  embedding: vector("embedding", { dimensions: 1536 }).notNull(),
+  // Add detailed clothing description
+  clothingDescription: text("clothing_description").notNull(),
+  // Add location where person was detected
+  detectionLocation: text("detection_location").notNull()
 });
 
 export const cameras = pgTable("cameras", {
   id: serial("id").primaryKey(),
   location: text("location").notNull(),
-  lastActive: timestamp("last_active").defaultNow()
+  lastActive: timestamp("last_active").defaultNow(),
+  // Add camera type and status
+  type: text("type").notNull().default("fixed"),
+  status: text("status").notNull().default("active")
 });
 
 export const insertCaseSchema = createInsertSchema(cases).omit({ 
@@ -71,7 +80,8 @@ export const insertCameraFootageSchema = createInsertSchema(cameraFootage).omit(
 
 export const insertPersonDetectionSchema = createInsertSchema(personDetections).omit({ 
   id: true,
-  matchScore: true
+  matchScore: true,
+  timestamp: true
 });
 
 export const insertCameraSchema = createInsertSchema(cameras).omit({
@@ -119,4 +129,24 @@ export interface CameraAIAnalysis {
   }[];
   summary: string;
   processedAt: string | null;
+}
+
+// Types for search results
+export interface SearchResult {
+  detection: PersonDetection;
+  similarity: number;
+  camera: Camera;
+}
+
+// Type for the embedding vector
+export type EmbeddingVector = number[];
+
+// Types for search criteria
+export interface SearchCriteria {
+  description: string;
+  timeRange?: {
+    start: string;
+    end: string;
+  };
+  location?: string;
 }

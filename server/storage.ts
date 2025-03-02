@@ -1,6 +1,7 @@
 import { personDetections, cameras, type PersonDetection, type InsertPersonDetection, type Camera, type InsertCamera } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
+import type { SearchCriteria, SearchResult } from "@shared/types";
 
 export interface IStorage {
   createDetection(detection: InsertPersonDetection): Promise<PersonDetection>;
@@ -10,6 +11,7 @@ export interface IStorage {
   createCamera(camera: InsertCamera): Promise<Camera>;
   getCamera(id: number): Promise<Camera | undefined>;
   getAllCameras(): Promise<Camera[]>;
+  searchDetections(queryEmbedding: number[], criteria: SearchCriteria): Promise<SearchResult[]>;
   createCase(caseData: InsertCase): Promise<Case>;
   getCase(id: number): Promise<Case | undefined>;
   getAllCases(): Promise<Case[]>;
@@ -78,6 +80,57 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(cameras.lastActive));
   }
 
+  async searchDetections(queryEmbedding: number[], criteria: SearchCriteria): Promise<SearchResult[]> {
+    // Use vector similarity search with additional filters
+    const results = await db.execute(sql`
+      WITH similarity_scores AS (
+        SELECT 
+          pd.*,
+          1 - (pd.embedding <=> ${queryEmbedding}::vector) as similarity
+        FROM ${personDetections} pd
+        WHERE 
+          ${criteria.timeRange ? sql`
+            pd.timestamp BETWEEN ${criteria.timeRange.start} AND ${criteria.timeRange.end}
+          ` : sql`TRUE`}
+          AND
+          ${criteria.location ? sql`
+            pd.detection_location ILIKE ${`%${criteria.location}%`}
+          ` : sql`TRUE`}
+      )
+      SELECT ss.*, c.*
+      FROM similarity_scores ss
+      LEFT JOIN ${cameras} c ON ss.camera_id = c.id
+      WHERE similarity > 0.7
+      ORDER BY similarity DESC
+      LIMIT 5
+    `);
+
+    // Process results
+    return results.map(row => ({
+      detection: {
+        id: row.id,
+        description: row.description,
+        confidence: row.confidence,
+        timestamp: row.timestamp,
+        thumbnail: row.thumbnail,
+        bbox: row.bbox,
+        details: row.details,
+        cameraId: row.camera_id,
+        matchScore: row.similarity,
+        embedding: row.embedding,
+        clothingDescription: row.clothing_description,
+        detectionLocation: row.detection_location
+      },
+      similarity: row.similarity,
+      camera: {
+        id: row.id,
+        location: row.location,
+        lastActive: row.last_active,
+        type: row.type,
+        status: row.status
+      }
+    }));
+  }
   async createCase(caseData: InsertCase): Promise<Case> {
     throw new Error("Method not implemented.");
   }
@@ -112,4 +165,4 @@ export class DatabaseStorage implements IStorage {
 
 export const storage = new DatabaseStorage();
 
-import { cases, cameraFootage, type Case, type InsertCase, type CameraFootage, type InsertCameraFootage, type AIAnalysis, type CameraAIAnalysis, type SearchRadius } from "@shared/schema";
+import { cases, cameraFootage, type Case, type InsertCase, type CameraFootage, type AIAnalysis, type CameraAIAnalysis, type SearchRadius } from "@shared/schema";

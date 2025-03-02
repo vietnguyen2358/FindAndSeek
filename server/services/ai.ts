@@ -1,5 +1,8 @@
 import OpenAI from "openai";
 import fetch from "node-fetch";
+import { storage } from "../storage";
+import type { SearchCriteria, SearchResult } from "@shared/types";
+import sharp from "sharp";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -17,6 +20,7 @@ interface ImageAnalysisResult {
       movement: string;
       distinctive_features: string[];
     };
+    embedding: number[]; // Added embedding field
   }[];
   summary: string;
 }
@@ -30,7 +34,7 @@ export async function analyzeImage(imageUrl: string): Promise<ImageAnalysisResul
       messages: [
         {
           role: "system",
-          content: `Analyze this image and identify people in the scene. For each person, provide detailed information in the following JSON format:
+          content: `Analyze this image and identify people in the scene. Focus especially on clothing and distinctive features. For each person, provide detailed information in the following JSON format:
           {
             "detections": [
               {
@@ -38,7 +42,7 @@ export async function analyzeImage(imageUrl: string): Promise<ImageAnalysisResul
                 "confidence": 0.95,
                 "details": {
                   "age": "Estimated age range",
-                  "clothing": "Detailed clothing description",
+                  "clothing": "Detailed clothing description including colors, styles, and brands if visible",
                   "environment": "Immediate surroundings and context",
                   "movement": "Direction and type of movement",
                   "distinctive_features": ["List of notable characteristics"]
@@ -53,7 +57,7 @@ export async function analyzeImage(imageUrl: string): Promise<ImageAnalysisResul
           content: [
             {
               type: "text",
-              text: "Describe all the people in this image in detail."
+              text: "Describe all the people in this image in detail, focusing especially on their clothing."
             },
             {
               type: "image_url",
@@ -69,6 +73,14 @@ export async function analyzeImage(imageUrl: string): Promise<ImageAnalysisResul
     const analysis = JSON.parse(response.choices[0].message.content || "{}");
     console.log('GPT-4 Vision analysis complete:', analysis);
 
+    // Generate embeddings for each detection
+    for (const detection of analysis.detections) {
+      const embedding = await generateEmbedding(
+        `${detection.description} ${detection.details.clothing} ${detection.details.distinctive_features.join(" ")}`
+      );
+      detection.embedding = embedding;
+    }
+
     return analysis;
   } catch (error) {
     console.error("Error analyzing image with GPT-4 Vision:", error);
@@ -79,14 +91,63 @@ export async function analyzeImage(imageUrl: string): Promise<ImageAnalysisResul
   }
 }
 
-// Helper function to convert URL to base64 (Unchanged)
+export async function generateEmbedding(text: string): Promise<number[]> {
+  try {
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: text,
+      dimensions: 1536
+    });
+
+    return response.data[0].embedding;
+  } catch (error) {
+    console.error("Error generating embedding:", error);
+    throw error;
+  }
+}
+
+export async function findSimilarDetections(criteria: SearchCriteria): Promise<SearchResult[]> {
+  try {
+    // Get embedding for the search query
+    const queryEmbedding = await generateEmbedding(criteria.description);
+
+    // Search the database using vector similarity
+    const detections = await storage.searchDetections(queryEmbedding, criteria);
+
+    // Return the results sorted by similarity
+    return detections;
+  } catch (error) {
+    console.error("Error finding similar detections:", error);
+    throw error;
+  }
+}
+
+export async function analyzeClothingDescription(text: string): Promise<string> {
+  const response = await openai.chat.completions.create({
+    model: "gpt-4-turbo-preview",
+    messages: [
+      {
+        role: "system",
+        content: "Extract and normalize clothing descriptions from the text. Focus on colors, types of clothing, and distinctive features. Format the output as a concise, standardized description."
+      },
+      {
+        role: "user",
+        content: text
+      }
+    ]
+  });
+
+  return response.choices[0].message.content || "";
+}
+
+// Helper function to convert URL to base64 
 async function imageUrlToBase64(imageUrl: string): Promise<string> {
   const response = await fetch(imageUrl);
   const buffer = await response.buffer();
   return buffer.toString('base64');
 }
 
-// Helper function to crop an image based on bounding box (Unchanged)
+// Helper function to crop an image based on bounding box
 async function cropImageFromUrl(imageUrl: string, bbox: [number, number, number, number]): Promise<string> {
   try {
     console.log('Downloading image for cropping:', imageUrl);
@@ -130,7 +191,7 @@ interface AnalysisResult {
   confidence: number;
 }
 
-// Basic report analysis using GPT-4 (Unchanged)
+// Basic report analysis using GPT-4
 export async function analyzeReport(text: string): Promise<AnalysisResult> {
   try {
     const response = await openai.chat.completions.create({
@@ -163,7 +224,7 @@ export async function analyzeReport(text: string): Promise<AnalysisResult> {
   }
 }
 
-// Utility function for calculating cosine similarity (Unchanged)
+// Utility function for calculating cosine similarity
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
   const dotProduct = a.reduce((acc, val, i) => acc + val * b[i], 0);
@@ -172,7 +233,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   return dotProduct / (aMagnitude * bMagnitude);
 }
 
-// Generate embeddings for text using GPT-4 (Unchanged)
+// Generate embeddings for text using GPT-4
 export async function getEmbeddings(text: string): Promise<number[]> {
   try {
     const response = await openai.embeddings.create({
@@ -193,7 +254,7 @@ interface MovementPrediction {
   timeElapsed: number;
 }
 
-// Predict possible movement based on time elapsed (Unchanged)
+// Predict possible movement based on time elapsed
 export async function predictMovement(
   lastLocation: { lat: number; lng: number },
   timeElapsed: number,
@@ -222,19 +283,13 @@ export async function predictMovement(
   };
 }
 
-// Match search terms against detections (Unchanged)
+// Match search terms against detections 
 export async function matchSearchTerms(searchQuery: string, detections: ImageAnalysisResult[]): Promise<number[]> {
   try {
     const queryEmbedding = await getEmbeddings(searchQuery);
 
-    const detectionPromises = detections.map(async (d) => {
-      const descriptions = d.detections.map(det =>
-        `${det.description} ${det.details.clothing} ${det.details.distinctive_features.join(" ")}`
-      );
-      return Promise.all(descriptions.map(desc => getEmbeddings(desc)));
-    });
+    const detectionEmbeddings = detections.map(d => d.detections.map(det => det.embedding).flat());
 
-    const detectionEmbeddings = await Promise.all(detectionPromises);
 
     const matches: number[] = [];
     detectionEmbeddings.forEach((detection, index) => {
@@ -251,5 +306,3 @@ export async function matchSearchTerms(searchQuery: string, detections: ImageAna
     return [];
   }
 }
-
-import sharp from "sharp";
