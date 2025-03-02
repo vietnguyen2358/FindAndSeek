@@ -45,6 +45,8 @@ export function InteractiveMap({
       style: "mapbox://styles/mapbox/dark-v11",
       center,
       zoom,
+      pitchWithRotate: false,
+      attributionControl: false
     });
 
     map.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
@@ -87,18 +89,15 @@ export function InteractiveMap({
 
     // Update or add new pins
     pins.forEach((pin) => {
-      let marker = markersRef.current[pin.id];
       const isHighlighted = pin.id === highlightedPinId;
 
-      // Create or update marker element
+      // Create marker element
       const el = document.createElement("div");
-      el.className = "w-3 h-3 rounded-full cursor-pointer relative";
+      el.className = `w-3 h-3 rounded-full cursor-pointer relative transition-transform duration-300 ${
+        isHighlighted ? 'scale-150' : ''
+      }`;
       el.style.backgroundColor = pin.type === "camera" ? "#ef4444" : "#3b82f6";
-
-      if (isHighlighted) {
-        el.style.transform = "scale(1.5)";
-        el.style.boxShadow = "0 0 10px rgba(255,255,255,0.5)";
-      }
+      el.style.boxShadow = isHighlighted ? "0 0 10px rgba(255,255,255,0.5)" : "none";
 
       // Add pulse effect
       const pulse = document.createElement("div");
@@ -117,17 +116,21 @@ export function InteractiveMap({
         </div>
       `;
 
+      let marker = markersRef.current[pin.id];
+
       if (!marker) {
-        // Create new marker with popup
-        marker = new mapboxgl.Marker(el)
+        // Create new marker
+        marker = new mapboxgl.Marker({
+          element: el,
+          anchor: 'center'
+        })
           .setLngLat([pin.lng, pin.lat])
           .setPopup(
             new mapboxgl.Popup({ offset: 25, closeButton: false })
               .setHTML(popupContent)
-          )
-          .addTo(map.current);
+          );
 
-        // Store marker reference
+        marker.addTo(map.current);
         markersRef.current[pin.id] = marker;
 
         // Add click handler
@@ -143,17 +146,18 @@ export function InteractiveMap({
     });
   }, [pins, highlightedPinId, onPinClick]);
 
-  // Handle center changes
+  // Handle center and zoom changes
   useEffect(() => {
     if (!map.current) return;
 
-    // Smoothly animate to new center
+    // Smoothly animate to new center and zoom
     map.current.flyTo({
       center: center,
-      duration: 1000,
+      zoom: zoom,
+      duration: 2000,
       essential: true
     });
-  }, [center]);
+  }, [center, zoom]);
 
   return (
     <Card className="w-full h-[600px] overflow-hidden border-border bg-background relative">
