@@ -35,7 +35,7 @@ export function InteractiveMap({
   const markersRef = useRef<{ [key: number]: mapboxgl.Marker }>({});
   const [isMapReady, setIsMapReady] = useState(false);
 
-  // Initialize map
+  // Initialize map once
   useEffect(() => {
     if (!mapContainer.current) return;
 
@@ -46,21 +46,15 @@ export function InteractiveMap({
       center,
       zoom,
       pitchWithRotate: false,
-      attributionControl: false
+      attributionControl: false,
     });
 
     newMap.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
 
     newMap.on('load', () => {
-      // Make water darker
       newMap.setPaintProperty('water', 'fill-color', '#1a1a1a');
-
-      // Make buildings darker
       newMap.setPaintProperty('building', 'fill-color', '#262626');
-
-      // Adjust text colors
       newMap.setPaintProperty('label-text', 'text-color', '#666666');
-
       setIsMapReady(true);
     });
 
@@ -71,19 +65,18 @@ export function InteractiveMap({
       markersRef.current = {};
       if (map.current) {
         map.current.remove();
+        map.current = null;
       }
     };
-  }, []); // Only run once on mount
+  }, []);
 
-  // Handle pins updates
+  // Handle pins updates with memoization
   useEffect(() => {
     const currentMap = map.current;
     if (!currentMap || !isMapReady) return;
 
-    // Track existing pins
+    // Remove stale markers first
     const currentPinIds = new Set(pins.map(pin => pin.id));
-
-    // Remove stale markers
     Object.entries(markersRef.current).forEach(([id, marker]) => {
       if (!currentPinIds.has(Number(id))) {
         marker.remove();
@@ -91,9 +84,10 @@ export function InteractiveMap({
       }
     });
 
-    // Update or add new pins
+    // Update or add pins
     pins.forEach((pin) => {
       const isHighlighted = pin.id === highlightedPinId;
+      let marker = markersRef.current[pin.id];
 
       // Create marker element
       const el = document.createElement("div");
@@ -110,8 +104,6 @@ export function InteractiveMap({
       pulse.style.animationDuration = isHighlighted ? "1s" : "2s";
       el.appendChild(pulse);
 
-      let marker = markersRef.current[pin.id];
-
       if (!marker) {
         // Create new marker
         marker = new mapboxgl.Marker({
@@ -120,15 +112,15 @@ export function InteractiveMap({
         })
           .setLngLat([pin.lng, pin.lat]);
 
-        marker.addTo(currentMap);
-        markersRef.current[pin.id] = marker;
-
         // Add click handler
         if (onPinClick) {
           el.addEventListener("click", () => onPinClick(pin));
         }
+
+        marker.addTo(currentMap);
+        markersRef.current[pin.id] = marker;
       } else {
-        // Update existing marker's element and position
+        // Update existing marker
         marker.getElement().replaceWith(el);
         marker.setLngLat([pin.lng, pin.lat]);
       }
@@ -143,7 +135,7 @@ export function InteractiveMap({
       center,
       zoom,
       duration: 1000,
-      essential: true
+      essential: true,
     });
   }, [center, zoom, isMapReady]);
 
