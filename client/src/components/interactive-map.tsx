@@ -36,7 +36,7 @@ export function InteractiveMap({
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapContainer.current || map.current) return;
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
     map.current = new mapboxgl.Map({
@@ -58,11 +58,8 @@ export function InteractiveMap({
     });
 
     return () => {
-      // Clean up markers
       Object.values(markersRef.current).forEach(marker => marker.remove());
       markersRef.current = {};
-
-      // Remove map
       if (map.current) {
         map.current.remove();
         map.current = null;
@@ -74,14 +71,44 @@ export function InteractiveMap({
   useEffect(() => {
     if (!map.current) return;
 
+    // Create or update markers for each pin
     pins.forEach((pin) => {
       const isHighlighted = pin.id === highlightedPinId;
 
-      // Get existing marker or create new one
+      // Check if marker already exists
       let marker = markersRef.current[pin.id];
+      let el: HTMLDivElement;
 
-      // Create the marker element
-      const el = document.createElement("div");
+      if (!marker) {
+        // Create new marker element
+        el = document.createElement("div");
+        marker = new mapboxgl.Marker({
+          element: el,
+          anchor: 'center'
+        })
+          .setLngLat([pin.lng, pin.lat])
+          .addTo(map.current!);
+
+        // Store marker reference
+        markersRef.current[pin.id] = marker;
+
+        // Add click handler
+        if (onPinClick) {
+          el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            onPinClick(pin);
+          });
+        }
+      } else {
+        el = marker.getElement();
+        // Only update position if it changed
+        const currentPos = marker.getLngLat();
+        if (currentPos.lng !== pin.lng || currentPos.lat !== pin.lat) {
+          marker.setLngLat([pin.lng, pin.lat]);
+        }
+      }
+
+      // Update marker appearance
       el.className = `w-3 h-3 rounded-full cursor-pointer relative transition-all duration-300 ${
         isHighlighted ? 'scale-150' : ''
       }`;
@@ -89,40 +116,15 @@ export function InteractiveMap({
       el.style.boxShadow = isHighlighted ? "0 0 10px rgba(255,255,255,0.5)" : "none";
 
       // Add pulse effect
+      el.innerHTML = ''; // Clear existing pulse
       const pulse = document.createElement("div");
       pulse.className = "absolute -inset-1 rounded-full animate-ping";
       pulse.style.backgroundColor = pin.type === "camera" ? "rgba(239, 68, 68, 0.3)" : "rgba(59, 130, 246, 0.3)";
       pulse.style.animationDuration = isHighlighted ? "1s" : "2s";
       el.appendChild(pulse);
-
-      if (!marker) {
-        // Create new marker
-        marker = new mapboxgl.Marker({
-          element: el,
-          anchor: 'center'
-        })
-          .setLngLat([pin.lng, pin.lat]);
-
-        // Add click handler
-        if (onPinClick) {
-          marker.getElement().addEventListener("click", () => onPinClick(pin));
-        }
-
-        marker.addTo(map.current!);
-        markersRef.current[pin.id] = marker;
-      } else {
-        // Just update the element and position
-        marker.getElement().replaceWith(el);
-        marker.setLngLat([pin.lng, pin.lat]);
-
-        // Re-add click handler
-        if (onPinClick) {
-          el.addEventListener("click", () => onPinClick(pin));
-        }
-      }
     });
 
-    // Remove any markers that are no longer in the pins array
+    // Remove markers that are no longer in pins
     Object.entries(markersRef.current).forEach(([id, marker]) => {
       if (!pins.find(p => p.id === Number(id))) {
         marker.remove();
