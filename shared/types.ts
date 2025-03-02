@@ -5,6 +5,7 @@ export interface MapPin {
   type: "camera" | "lastSeen";
   timestamp?: string;
   location: string;
+  detectionCount?: number;
 }
 
 export interface DetectedPersonDetails {
@@ -17,12 +18,14 @@ export interface DetectedPersonDetails {
 
 export interface DetectedPerson {
   id: number;
+  cameraId: number;
   time: string;
   description: string;
   confidence: number;
   thumbnail: string;
   bbox: [number, number, number, number];
   details: DetectedPersonDetails;
+  matchScore?: number;
 }
 
 export interface Alert {

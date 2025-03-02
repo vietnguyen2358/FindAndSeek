@@ -19,6 +19,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PersonCard } from "@/components/person-card";
 import { VoiceInput } from "@/components/voice-input";
 import { CallButton } from "@/components/call-button";
+import { VideoPlayer } from "@/components/video-player";
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';

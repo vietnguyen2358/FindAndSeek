@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { DetectedPerson } from "@shared/types";
-import { cameraImages } from "@/lib/mockData";
+import { cameraImages, cameraFeeds } from "@/lib/mockData";
 import { Badge } from "@/components/ui/badge";
 
 interface VideoPlayerProps {
@@ -119,7 +119,7 @@ export function VideoPlayer({
 
             // If it's a match, add a "MATCH" badge
             if (matchingResult) {
-              const matchScore = Math.round((matchingResult as any).matchScore * 100);
+              const matchScore = Math.round((matchingResult.matchScore || 0) * 100);
               ctx.fillStyle = '#22c55e';
               ctx.fillRect(
                 x * canvas.width,
@@ -142,6 +142,7 @@ export function VideoPlayer({
         if (onPersonsDetected && analysis.detections) {
           const detectedPersons = analysis.detections.map((detection: any, index: number) => ({
             id: index + 1,
+            cameraId,
             time: new Date().toLocaleString(),
             description: detection.description,
             confidence: detection.confidence,
@@ -170,7 +171,7 @@ export function VideoPlayer({
       setIsProcessing(false);
     };
 
-    // Load the test image
+    // Load the camera image
     const imageUrl = cameraImages[cameraId as keyof typeof cameraImages];
     console.log('Loading camera image:', imageUrl);
     img.src = imageUrl;
