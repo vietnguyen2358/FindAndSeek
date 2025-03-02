@@ -42,10 +42,10 @@ export const mockPins: MapPin[] = [
 
 // NYC DOT Traffic Camera feeds - using image URLs
 export const cameraFeeds = {
-  1: "./Screenshot 2025-03-02 at 7.32.50 AM.png", // Times Square
-  2: "./Screenshot 2025-03-02 at 7.32.38 AM.png", // 5 Ave @ 42 St
-  3: "./Screenshot 2025-03-02 at 7.32.10 AM.png", // Herald Square
-  4: "./Screenshot 2025-03-02 at 7.33.00 AM.png"  // Columbus Circle
+  1: "/images/Screenshot 2025-03-02 at 7.32.50 AM.png", // Times Square
+  2: "/images/Screenshot 2025-03-02 at 7.32.38 AM.png", // 5 Ave @ 42 St
+  3: "/images/Screenshot 2025-03-02 at 7.32.10 AM.png", // Herald Square
+  4: "/images/Screenshot 2025-03-02 at 7.33.00 AM.png"  // Columbus Circle
 };
 
 // Empty mock data for other features
