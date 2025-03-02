@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { InteractiveMap } from "@/components/interactive-map";
 import { SearchFilters } from "@/components/search-filters";
 import { AlertsPanel } from "@/components/alerts-panel";
@@ -35,6 +35,8 @@ export default function Dashboard() {
   const [isCallActive, setIsCallActive] = useState(false);
   const [transcription, setTranscription] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -42,7 +44,14 @@ export default function Dashboard() {
       timestamp: new Date().toLocaleString()
     }
   ]);
-  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollElement = scrollAreaRef.current;
+      scrollElement.scrollTop = scrollElement.scrollHeight;
+    }
+  }, [chatMessages]);
 
   const handleSearch = async (query: string) => {
     if (!query.trim()) return;
@@ -57,7 +66,7 @@ export default function Dashboard() {
       };
       setChatMessages(prev => [...prev, userMessage]);
 
-      // Process with Groq
+      // Process with ChatGPT
       const result = await apiRequest('/api/parse-search', {
         method: 'POST',
         body: JSON.stringify({ query })
@@ -205,9 +214,9 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
 
-              <CardContent className="flex-1 flex flex-col space-y-4">
+              <CardContent className="flex-1 flex flex-col space-y-4 overflow-hidden">
                 {/* Chat Messages */}
-                <ScrollArea className="flex-1 pr-4">
+                <div ref={scrollAreaRef} className="flex-1 overflow-y-auto pr-4">
                   <div className="space-y-4">
                     {chatMessages.map((message, index) => (
                       <div
@@ -232,21 +241,21 @@ export default function Dashboard() {
                         </div>
                       </div>
                     ))}
-                  </div>
 
-                  {/* Search Results */}
-                  {searchResults.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      {searchResults.map((person) => (
-                        <PersonCard
-                          key={person.id}
-                          person={person}
-                          onClick={() => setSelectedPerson(person)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
+                    {/* Search Results */}
+                    {searchResults.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        {searchResults.map((person) => (
+                          <PersonCard
+                            key={person.id}
+                            person={person}
+                            onClick={() => setSelectedPerson(person)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 {/* Input Area */}
                 <div className="flex items-center gap-2 pt-4">

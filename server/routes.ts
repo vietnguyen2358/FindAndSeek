@@ -7,10 +7,9 @@ import { z } from "zod";
 import type { SearchFilter } from "@shared/types";
 import OpenAI from "openai";
 
-// Initialize Groq client
+// Initialize OpenAI client
 const openai = new OpenAI({
-  baseURL: "https://api.groq.com/v1",
-  apiKey: process.env.GROQ_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -191,7 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // New search parsing endpoint
+  // Updated search parsing endpoint to use ChatGPT
   app.post("/api/parse-search", async (req, res) => {
     try {
       console.log('Received search parsing request:', req.body);
@@ -203,7 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { query } = schema.parse(req.body);
 
       const response = await openai.chat.completions.create({
-        model: "llama2-70b-4096",
+        model: "gpt-4-turbo-preview",
         messages: [
           {
             role: "system",
