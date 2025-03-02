@@ -38,7 +38,7 @@ export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) 
       <CardContent className="flex-1 space-y-4 p-4">
         <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
           <img
-            src={cameraFeeds[pin.id as keyof typeof cameraFeeds]}
+            src={`/images/cameras/${cameraFeeds[pin.id as keyof typeof cameraFeeds]}.jpg`} // Updated image path
             className="w-full h-full object-cover"
             alt={`Camera feed from ${pin.location}`}
             onError={handleImageError}

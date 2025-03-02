@@ -49,6 +49,11 @@ export const cameraFeeds = {
 };
 
 // Empty mock data for other features
-export const cameraImages = {};
+export const cameraImages = {
+  1: "/images/cameras/camera1.jpg",
+  2: "/images/cameras/camera2.jpg",
+  3: "/images/cameras/camera3.jpg",
+  // Add more as needed
+};
 export const mockDetections: DetectedPerson[] = [];
 export const personImages = {};
