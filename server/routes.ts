@@ -2,7 +2,6 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertCaseSchema, insertCameraFootageSchema } from "@shared/schema";
-import { analyzeReport, analyzeImage, predictMovement } from "./services/ai";
 import { z } from "zod";
 import type { SearchFilter } from "@shared/types";
 import OpenAI from "openai";
@@ -190,7 +189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Updated search parsing endpoint to use ChatGPT
+  // Updated search parsing endpoint with better error handling
   app.post("/api/parse-search", async (req, res) => {
     try {
       console.log('Received search parsing request:', req.body);
@@ -206,9 +205,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         messages: [
           {
             role: "system",
-            content: `You are an AI assistant helping to find missing persons. Analyze user queries and help extract relevant information.
+            content: `You are an AI assistant helping to find missing persons. Analyze user queries and extract information in JSON format.
 
-When users provide descriptions, respond in this format:
+Your response must be a valid JSON object with this structure:
 {
   "filters": [
     {"category": "clothing", "value": "specific clothing item or color"},
@@ -220,24 +219,31 @@ When users provide descriptions, respond in this format:
   ],
   "response": "Natural language response about what you understood",
   "suggestions": ["Suggested follow-up questions or additional details to ask"]
-}
-
-Break down complex descriptions into specific search criteria. Be precise and thorough.`
+}`
           },
           {
             role: "user",
-            content: query
+            content: `Extract search information from: ${query}`
           }
         ],
         response_format: { type: "json_object" }
       });
 
-      const result = JSON.parse(response.choices[0].message.content || "{}");
+      if (!response.choices[0].message.content) {
+        throw new Error('No response content received from ChatGPT');
+      }
+
+      const result = JSON.parse(response.choices[0].message.content);
       console.log('Parsed search filters:', result);
       res.json(result);
     } catch (error: any) {
       console.error("Error parsing search query:", error);
-      res.status(400).json({ error: error.message });
+      res.status(400).json({ 
+        error: error.message,
+        filters: [],
+        response: "I encountered an error processing your request. Please try again.",
+        suggestions: ["Try rephrasing your search query"]
+      });
     }
   });
 
