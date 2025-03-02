@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertCaseSchema, insertCameraFootageSchema } from "@shared/schema";
 import { analyzeReport, analyzeImage, predictMovement } from "./services/ai";
 import { z } from "zod";
+import { VideoProcessor } from "./services/videoProcessor";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/cases", async (req, res) => {
@@ -152,6 +153,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       res.json({ prediction, case: updatedCase });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/analyze-frame", async (req, res) => {
+    try {
+      const schema = z.object({
+        frameData: z.string(),
+        timestamp: z.string()
+      });
+
+      const { frameData, timestamp } = schema.parse(req.body);
+      const analysis = await VideoProcessor.processFrame(frameData, timestamp);
+
+      res.json(analysis);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }

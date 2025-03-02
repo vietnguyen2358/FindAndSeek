@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { mockVideoFrames } from "@/lib/mockData";
+import type { DetectedPerson } from "@shared/types";
+import { apiRequest } from "@/lib/queryClient";
 
 interface VideoPlayerProps {
   detections?: {
@@ -7,12 +9,38 @@ interface VideoPlayerProps {
     confidence: number;
   }[];
   showDetections?: boolean;
+  onPersonsDetected?: (persons: DetectedPerson[]) => void;
 }
 
-export function VideoPlayer({ detections = [], showDetections = true }: VideoPlayerProps) {
+export function VideoPlayer({ 
+  detections = [], 
+  showDetections = true,
+  onPersonsDetected 
+}: VideoPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Process frame and get AI analysis
+  const processFrame = async (frameData: string, timestamp: string) => {
+    try {
+      setIsProcessing(true);
+      const response = await apiRequest<{ detectedPersons: DetectedPerson[] }>({
+        url: "/api/analyze-frame",
+        method: "POST",
+        data: { frameData, timestamp }
+      });
+
+      if (response.detectedPersons && onPersonsDetected) {
+        onPersonsDetected(response.detectedPersons);
+      }
+    } catch (error) {
+      console.error("Error processing frame:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -22,17 +50,23 @@ export function VideoPlayer({ detections = [], showDetections = true }: VideoPla
     if (!ctx) return;
 
     const img = new Image();
-    img.crossOrigin = "anonymous"; // Enable CORS for the image
+    img.crossOrigin = "anonymous";
     const frameSource = mockVideoFrames[currentFrame];
 
     img.onload = () => {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
+      // For the first frame (real image), process it with AI
+      if (currentFrame === 0 && !isProcessing) {
+        const frameData = canvas.toDataURL("image/jpeg").split(",")[1];
+        processFrame(frameData, new Date().toISOString());
+      }
+
       if (showDetections) {
         detections.forEach(({ bbox, confidence }) => {
           const [x, y, width, height] = bbox;
 
-          // Draw semi-transparent background for the detection box
+          // Draw semi-transparent background
           ctx.fillStyle = `rgba(59, 130, 246, ${confidence * 0.2})`;
           ctx.fillRect(
             x * canvas.width,
@@ -41,7 +75,7 @@ export function VideoPlayer({ detections = [], showDetections = true }: VideoPla
             height * canvas.height
           );
 
-          // Draw border with confidence-based opacity
+          // Draw border
           ctx.strokeStyle = `rgba(59, 130, 246, ${confidence})`;
           ctx.lineWidth = 2;
           ctx.strokeRect(
@@ -51,9 +85,9 @@ export function VideoPlayer({ detections = [], showDetections = true }: VideoPla
             height * canvas.height
           );
 
-          // Add confidence percentage
-          ctx.fillStyle = 'white';
-          ctx.font = '12px Arial';
+          // Show confidence
+          ctx.fillStyle = "white";
+          ctx.font = "12px Arial";
           ctx.fillText(
             `${Math.round(confidence * 100)}%`,
             x * canvas.width,
@@ -72,7 +106,7 @@ export function VideoPlayer({ detections = [], showDetections = true }: VideoPla
     }, 1000 / 30); // 30fps
 
     return () => clearInterval(interval);
-  }, [currentFrame, detections, isPlaying, showDetections]);
+  }, [currentFrame, detections, isPlaying, showDetections, isProcessing]);
 
   return (
     <canvas

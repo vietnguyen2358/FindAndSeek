@@ -27,6 +27,14 @@ export default function Dashboard() {
   const [selectedPerson, setSelectedPerson] = useState<DetectedPerson | null>(null);
   const totalDuration = "05:00";
 
+  const handlePersonsDetected = (persons: DetectedPerson[]) => {
+    const newDetections = persons.map((person) => ({
+      ...person,
+      time: new Date().toLocaleString(),
+    }));
+    console.log("New persons detected:", newDetections);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top Search Bar */}
@@ -89,6 +97,7 @@ export default function Dashboard() {
                         confidence: d.confidence,
                       }))}
                       showDetections={!hideDetections}
+                      onPersonsDetected={handlePersonsDetected}
                     />
                     {/* Video controls */}
                     <div className="absolute bottom-4 left-0 right-0 px-4">
