@@ -3,9 +3,9 @@ import { createServer } from "http";
 import { storage } from "./storage";
 import { insertCaseSchema, insertCameraFootageSchema } from "@shared/schema";
 import { z } from "zod";
-import type { SearchFilter, DetectedPerson, SearchCriteria } from "@shared/types";
+import type { DetectedPerson } from "@shared/types";
 import OpenAI from "openai";
-import { findSimilarDetections, analyzeClothingDescription } from "./services/similarity-search";
+import { findSimilarDetections } from "./services/similarity-search";
 import fetch from "node-fetch";
 import multer from 'multer';
 
@@ -17,7 +17,41 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
+// Helper function to get similarity score between search criteria and a detection
+async function getSimilarityScore(query: string, detection: DetectedPerson): Promise<number> {
+  try {
+    const detectionInfo = {
+      description: detection.description,
+      clothing: detection.details.clothing,
+      features: detection.details.distinctive_features,
+      location: detection.details.environment
+    };
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-turbo-preview",
+      messages: [
+        {
+          role: "system",
+          content: `Compare the search query with the detected person's details. Return a JSON number between 0 and 1 indicating how well they match based on clothing and physical description. Example: {"score": 0.85}`
+        },
+        {
+          role: "user",
+          content: `Search description: "${query}"
+Person detected: ${JSON.stringify(detectionInfo, null, 2)}`
+        }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || "{}");
+    return result.score || 0;
+  } catch (error) {
+    console.error("Error getting similarity score:", error);
+    return 0;
+  }
+}
+
+export async function registerRoutes(app: Express) {
   app.post("/api/cases", async (req, res) => {
     try {
       const caseData = insertCaseSchema.parse(req.body);
@@ -268,8 +302,6 @@ Matches: ${topMatches.map(match =>
     }
   });
 
-
-  // Enhanced transcription route for real-time processing
   app.post("/api/transcribe", upload.single('audio'), async (req, res) => {
     try {
       if (!req.file) {
