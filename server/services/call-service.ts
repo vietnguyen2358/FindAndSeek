@@ -73,7 +73,15 @@ export async function processTranscription(req: Request, res: Response) {
         messages: [
           {
             role: "system",
-            content: "You are helping to find missing persons. Extract key details from the voice description to search for matches."
+            content: `You are helping to find missing persons. Extract key details from the voice description to search for matches. 
+            Focus on:
+            - Clothing description
+            - Physical characteristics
+            - Last known location
+            - Time last seen
+            - Any distinctive features
+
+            Format your response in a clear, conversational way, highlighting the most important details for search.`
           },
           {
             role: "user",
@@ -85,16 +93,28 @@ export async function processTranscription(req: Request, res: Response) {
       })
     });
 
-    const groqResponse = await response.json();
+    if (!response.ok) {
+      throw new Error(`Groq API error: ${response.statusText}`);
+    }
+
+    const groqResponse = await response.json() as { choices: Array<{ message: { content: string } }> };
     const processedDescription = groqResponse.choices[0].message.content;
 
     // Make an outbound call with the results
     if (req.body.From) {
       await client.calls.create({
         twiml: new twilio.twiml.VoiceResponse()
-          .say('I have processed your description. Let me search our database.')
+          .say({
+            voice: 'alice',
+            language: 'en-US',
+            text: 'I have processed your description. Let me search our database.'
+          })
           .pause({ length: 2 })
-          .say(`Based on your description: ${processedDescription}`)
+          .say({
+            voice: 'alice',
+            language: 'en-US',
+            text: `Based on your description: ${processedDescription}`
+          })
           .toString(),
         to: req.body.From,
         from: process.env.TWILIO_PHONE_NUMBER || '',

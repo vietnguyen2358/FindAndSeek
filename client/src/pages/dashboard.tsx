@@ -139,11 +139,22 @@ export default function Dashboard() {
   };
 
   const handleCallResponse = (transcription: string) => {
+    // Add user's transcribed message
     setChatMessages(prev => [...prev, {
-      role: 'system',
-      content: `📞 Phone transcription: ${transcription}`,
+      role: 'user',
+      content: transcription,
       timestamp: new Date().toLocaleString()
     }]);
+
+    // Add system message indicating processing
+    setChatMessages(prev => [...prev, {
+      role: 'system',
+      content: '🎙️ Processing your voice message...',
+      timestamp: new Date().toLocaleString()
+    }]);
+
+    // Process the transcription as a search query
+    handleSearch(transcription);
   };
 
   return (
