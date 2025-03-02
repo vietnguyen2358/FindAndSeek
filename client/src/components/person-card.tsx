@@ -4,7 +4,7 @@ import type { DetectedPerson } from "@shared/types";
 import { cn } from "@/lib/utils";
 
 interface PersonCardProps {
-  person: DetectedPerson;
+  person: DetectedPerson & { matchScore?: number };
   onClick: () => void;
   highlight?: boolean;
 }
@@ -28,6 +28,11 @@ export function PersonCard({ person, onClick, highlight }: PersonCardProps) {
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <p className="font-medium">{person.description}</p>
+              {person.matchScore !== undefined && (
+                <Badge variant="secondary">
+                  {Math.round(person.matchScore * 100)}% Match
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               {person.time} - {person.details.environment}
