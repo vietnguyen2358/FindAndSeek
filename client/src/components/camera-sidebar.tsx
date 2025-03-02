@@ -5,6 +5,7 @@ import { cameraFeeds } from "@/lib/mockData";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 interface CameraSidebarProps {
   pin: MapPin;
@@ -13,6 +14,19 @@ interface CameraSidebarProps {
 }
 
 export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) {
+  const videoRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    // Force image reload every few seconds to keep MJPEG stream fresh
+    const interval = setInterval(() => {
+      if (videoRef.current) {
+        videoRef.current.src = `${cameraFeeds[pin.id as keyof typeof cameraFeeds]}?t=${Date.now()}`;
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [pin.id]);
+
   return (
     <Card className="w-full h-[calc(100vh-10rem)] flex flex-col">
       <CardHeader className="flex-none pb-3">
@@ -25,14 +39,15 @@ export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) 
           </Button>
         </div>
         <div className="text-sm text-muted-foreground">
-          Last Updated: {new Date(pin.timestamp || '').toLocaleString()}
+          Stream Status: Live
         </div>
       </CardHeader>
       <CardContent className="flex-1 space-y-4 p-4">
         <div className="aspect-video bg-black rounded-lg overflow-hidden">
-          {cameraFeeds[pin.id] ? (
+          {cameraFeeds[pin.id as keyof typeof cameraFeeds] ? (
             <img
-              src={cameraFeeds[pin.id]}
+              ref={videoRef}
+              src={`${cameraFeeds[pin.id as keyof typeof cameraFeeds]}?t=${Date.now()}`}
               className="w-full h-full object-cover"
               alt={`Live feed from ${pin.location}`}
             />
