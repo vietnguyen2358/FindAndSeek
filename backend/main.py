@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 from models import Clothing, PersonDescription, ProcessingResponse
+from constants import OPENAI_API_KEY, GROQ_API_KEY
 
 app = FastAPI()
 app.add_middleware(

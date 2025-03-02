@@ -7,3 +7,4 @@ vite.config.ts.*
 .env
 macEnv
 __pycache__
+constants.py
