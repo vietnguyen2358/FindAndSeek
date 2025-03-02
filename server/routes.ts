@@ -51,44 +51,6 @@ Person detected: ${JSON.stringify(detectionInfo, null, 2)}`
   }
 }
 
-// Function to interact with Groq AI
-async function getGroqResponse(prompt: string, systemMessage: string = ""): Promise<string> {
-  try {
-    const response = await fetch('https://api.groq.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: "mixtral-8x7b-32768",
-        messages: [
-          ...(systemMessage ? [{
-            role: "system",
-            content: systemMessage
-          }] : []),
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 800
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Groq API error: ${response.statusText}`);
-    }
-
-    const result = await response.json() as { choices: Array<{ message: { content: string } }> };
-    return result.choices[0].message.content;
-  } catch (error) {
-    console.error('Error calling Groq API:', error);
-    throw error;
-  }
-}
-
 export async function registerRoutes(app: Express) {
   app.post("/api/cases", async (req, res) => {
     try {
@@ -279,8 +241,24 @@ export async function registerRoutes(app: Express) {
       const { query, detections = [] } = schema.parse(req.body);
 
       if (detections.length > 0) {
-        // Get AI analysis of the matches using Groq
-        const analysisPrompt = `Search Query: "${query}"
+        // Get detailed analysis from GPT-4
+        const analysisResponse = await openai.chat.completions.create({
+          model: "gpt-4-turbo-preview",
+          messages: [
+            {
+              role: "system",
+              content: `You are an AI assistant specializing in missing persons searches and surveillance analysis. 
+Focus on:
+- Matching physical descriptions and clothing
+- Analyzing movement patterns
+- Identifying key locations
+- Assessing timing of sightings
+
+Be precise but compassionate in your responses.`
+            },
+            {
+              role: "user",
+              content: `Search Query: "${query}"
 Detected persons:
 ${detections.map(d => `- ${d.description} wearing ${d.details.clothing} at ${d.details.environment}`).join('\n')}
 
@@ -289,37 +267,17 @@ Analyze these detections in relation to the search query. For each detection:
 2. Note any distinctive features that might be relevant
 3. Consider the location and timing
 
-Provide a concise analysis with confidence levels.`;
+Provide a concise analysis with confidence levels.`
+            }
+          ]
+        });
 
-        const systemMessage = `You are an AI assistant specializing in missing persons searches and surveillance analysis. 
-Focus on:
-- Matching physical descriptions and clothing
-- Analyzing movement patterns
-- Identifying key locations
-- Assessing timing of sightings
-
-Be precise but compassionate in your responses.`;
-
-        const analysis = await getGroqResponse(analysisPrompt, systemMessage);
-
-        // Get similarity scores and rank the matches
+        // Get similarity scores for each detection
         const scoredDetections = await Promise.all(
-          detections.map(async (detection) => {
-            const similarityPrompt = `Compare these two descriptions and rate their similarity from 0 to 1:
-
-Search: "${query}"
-Detection: Person wearing ${detection.details.clothing}, described as ${detection.description}, seen at ${detection.details.environment}
-
-Return only a number between 0 and 1.`;
-
-            const scoreText = await getGroqResponse(similarityPrompt);
-            const score = Math.min(1, Math.max(0, parseFloat(scoreText) || 0));
-
-            return {
-              detection,
-              score
-            };
-          })
+          detections.map(async (detection) => ({
+            detection,
+            score: await getSimilarityScore(query, detection)
+          }))
         );
 
         // Sort by score and get top matches
@@ -338,26 +296,36 @@ Return only a number between 0 and 1.`;
 
         res.json({
           matches: topMatches,
-          analysis: analysis.split('\n')
+          analysis: analysisResponse.choices[0].message.content?.split('\n')
         });
 
       } else {
-        const noMatchesResponse = await getGroqResponse(
-          `The search query was: "${query}" but no matching persons were detected in the current camera feeds. 
-          Provide a helpful response that acknowledges this and suggests what to look out for.`,
-          "You are a helpful AI assistant for a missing persons search system. Be informative but sensitive in your responses."
-        );
+        // No matches found - provide a helpful response
+        const noMatchResponse = await openai.chat.completions.create({
+          model: "gpt-4-turbo-preview",
+          messages: [
+            {
+              role: "system",
+              content: "You are a helpful AI assistant for a missing persons search system. Be informative but sensitive in your responses."
+            },
+            {
+              role: "user",
+              content: `The search query was: "${query}" but no matching persons were detected in the current camera feeds. 
+              Provide a helpful response that acknowledges this and suggests what to look out for.`
+            }
+          ]
+        });
 
         res.json({
           matches: [],
-          analysis: [noMatchesResponse]
+          analysis: [noMatchResponse.choices[0].message.content || "No matches found in current camera feeds"]
         });
       }
 
     } catch (error) {
       console.error("Search error:", error);
       res.status(400).json({
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         matches: [],
         analysis: ['Error processing search']
       });
