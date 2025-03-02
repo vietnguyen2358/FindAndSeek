@@ -31,15 +31,11 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
 
     setIsAnalyzing(true);
     try {
-      const response = await apiRequest("/api/parse-search", {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json'
-        },
+      const result = await apiRequest('/api/parse-search', {
+        method: 'POST',
         body: JSON.stringify({ query: searchQuery })
       });
 
-      const result = await response.json();
       const filters = result.filters || [];
       setActiveFilters(filters);
       onSearch(filters);
