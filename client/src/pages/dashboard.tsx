@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { InteractiveMap } from "@/components/interactive-map";
-import { SearchFilters } from "@/components/search-filters";
 import { AlertsPanel } from "@/components/alerts-panel";
 import { VideoPlayer } from "@/components/video-player";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Mic, Camera, Bell, UserSearch, Phone, PhoneOff, MapPin, Send } from "lucide-react";
-import { mockPins, mockDetections, personImages } from "@/lib/mockData";
+import { Camera, UserSearch, MapPin, Send } from "lucide-react";
+import { mockPins, mockDetections } from "@/lib/mockData";
 import type { DetectedPerson, MapPin as MapPinType, SearchFilter } from "@shared/types";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,8 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { apiRequest } from "@/lib/queryClient";
+import { PersonCard } from "@/components/person-card";
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -32,15 +31,13 @@ export default function Dashboard() {
   const [selectedPin, setSelectedPin] = useState<MapPinType | null>(null);
   const [detections, setDetections] = useState(mockDetections);
   const [searchResults, setSearchResults] = useState<DetectedPerson[]>([]);
-  const [isCallActive, setIsCallActive] = useState(false);
-  const [transcription, setTranscription] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: "Hello! I'm your AI assistant. I can help you search for people and analyze descriptions. How can I help you today?",
+      content: "Hello! I'm your AI assistant specialized in helping find missing persons. I can help analyze descriptions and search through our database. How can I assist you today?",
       timestamp: new Date().toLocaleString()
     }
   ]);
@@ -72,32 +69,27 @@ export default function Dashboard() {
         body: JSON.stringify({ query })
       });
 
-      // Add system processing message
-      setChatMessages(prev => [...prev, {
-        role: 'system',
-        content: 'Processing your search...',
-        timestamp: new Date().toLocaleString()
-      }]);
-
-      const filters = result.filters || [];
-
       // Filter persons based on the search criteria
       const results = mockDetections.filter(person =>
-        matchPersonToFilters(person, filters)
+        matchPersonToFilters(person, result.filters || [])
       );
       setSearchResults(results);
 
-      // Add assistant response
-      const response: ChatMessage = {
+      // Add AI response
+      setChatMessages(prev => [...prev, {
         role: 'assistant',
-        content: `I found ${results.length} people matching your description. ${
-          results.length > 0 
-            ? 'Here are the matches:' 
-            : 'Try providing more details or different search criteria.'
-        }`,
+        content: result.response,
         timestamp: new Date().toLocaleString()
-      };
-      setChatMessages(prev => [...prev, response]);
+      }]);
+
+      // If there are suggestions, add them
+      if (result.suggestions?.length > 0) {
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: "You might also want to consider:\n" + result.suggestions.join("\n"),
+          timestamp: new Date().toLocaleString()
+        }]);
+      }
 
     } catch (error) {
       console.error('Error processing search:', error);
@@ -113,51 +105,37 @@ export default function Dashboard() {
   };
 
   const handlePersonsDetected = (persons: DetectedPerson[]) => {
-    setDetections(prev => [...persons]);
-  };
-
-  const toggleCall = () => {
-    if (!isCallActive) {
-      setIsCallActive(true);
-      // Mock live transcription updates
-      const mockUpdate = () => {
-        const newTranscription = "Operator: Last seen wearing a red jacket near downtown...";
-        setTranscription(prev => [...prev]);
-        setChatMessages(prev => [...prev, {
-          role: 'system',
-          content: `📞 ${newTranscription}`,
-          timestamp: new Date().toLocaleString()
-        }]);
-      };
-      setTimeout(mockUpdate, 2000);
-    } else {
-      setIsCallActive(false);
-    }
+    setDetections(prev => [...prev, ...persons]);
   };
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
         <div className="grid grid-cols-12 gap-6">
-          {/* Left Panel - Detections & Alerts */}
-          <div className="col-span-3 space-y-6">
+          {/* Left Panel - Detections & Matches */}
+          <div className="col-span-3">
             <Card className="h-[calc(100vh-7rem)]">
-              <Tabs defaultValue="detections" className="h-full">
+              <Tabs defaultValue="all" className="h-full">
                 <CardHeader>
                   <TabsList className="w-full">
-                    <TabsTrigger value="detections" className="flex-1">
+                    <TabsTrigger value="all">
                       <Camera className="w-4 h-4 mr-2" />
-                      Detections
+                      All Detections
                     </TabsTrigger>
-                    <TabsTrigger value="alerts" className="flex-1">
-                      <Bell className="w-4 h-4 mr-2" />
-                      Alerts
+                    <TabsTrigger value="matches">
+                      <UserSearch className="w-4 h-4 mr-2" />
+                      Matches
+                      {searchResults.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {searchResults.length}
+                        </Badge>
+                      )}
                     </TabsTrigger>
                   </TabsList>
                 </CardHeader>
 
                 <CardContent className="p-0">
-                  <TabsContent value="detections" className="m-0">
+                  <TabsContent value="all" className="m-0">
                     <ScrollArea className="h-[calc(100vh-12rem)] px-6">
                       <div className="space-y-4 pb-6">
                         {detections.map((person) => (
@@ -171,8 +149,25 @@ export default function Dashboard() {
                     </ScrollArea>
                   </TabsContent>
 
-                  <TabsContent value="alerts" className="m-0 px-6">
-                    <AlertsPanel />
+                  <TabsContent value="matches" className="m-0">
+                    <ScrollArea className="h-[calc(100vh-12rem)] px-6">
+                      <div className="space-y-4 pb-6">
+                        {searchResults.length === 0 ? (
+                          <div className="text-center text-muted-foreground p-4">
+                            No matches found. Try adjusting your search criteria.
+                          </div>
+                        ) : (
+                          searchResults.map((person) => (
+                            <PersonCard
+                              key={person.id}
+                              person={person}
+                              onClick={() => setSelectedPerson(person)}
+                              highlight
+                            />
+                          ))
+                        )}
+                      </div>
+                    </ScrollArea>
                   </TabsContent>
                 </CardContent>
               </Tabs>
@@ -191,7 +186,7 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Right Panel - Chat Interface */}
+          {/* Right Panel - AI Assistant */}
           <div className="col-span-3">
             <Card className="h-[calc(100vh-7rem)] flex flex-col">
               <CardHeader className="pb-3">
@@ -200,17 +195,6 @@ export default function Dashboard() {
                     <UserSearch className="w-5 h-5" />
                     AI Assistant
                   </CardTitle>
-                  <Button
-                    size="icon"
-                    variant={isCallActive ? "destructive" : "outline"}
-                    onClick={toggleCall}
-                  >
-                    {isCallActive ? (
-                      <PhoneOff className="h-4 w-4" />
-                    ) : (
-                      <Phone className="h-4 w-4" />
-                    )}
-                  </Button>
                 </div>
               </CardHeader>
 
@@ -234,26 +218,13 @@ export default function Dashboard() {
                               : 'bg-accent'
                           }`}
                         >
-                          <p className="text-sm">{message.content}</p>
+                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                           <p className="text-xs opacity-60 mt-1">
                             {message.timestamp}
                           </p>
                         </div>
                       </div>
                     ))}
-
-                    {/* Search Results */}
-                    {searchResults.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        {searchResults.map((person) => (
-                          <PersonCard
-                            key={person.id}
-                            person={person}
-                            onClick={() => setSelectedPerson(person)}
-                          />
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -328,7 +299,7 @@ export default function Dashboard() {
             <div className="space-y-4">
               <div className="aspect-square relative overflow-hidden rounded-lg">
                 <img
-                  src={personImages[selectedPerson.id as keyof typeof personImages]}
+                  src={selectedPerson.thumbnail}
                   alt="Detected person"
                   className="object-cover w-full h-full"
                 />
@@ -365,43 +336,6 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function PersonCard({ person, onClick }: { person: DetectedPerson; onClick: () => void }) {
-  return (
-    <Card
-      className="cursor-pointer hover:bg-accent/50 transition-colors"
-      onClick={onClick}
-    >
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <img
-            src={personImages[person.id as keyof typeof personImages]}
-            alt={`Person ${person.id}`}
-            className="w-16 h-16 rounded object-cover"
-          />
-          <div className="flex-1">
-            <div className="flex items-center justify-between">
-              <p className="font-medium">{person.description}</p>
-              <Badge variant="outline">
-                {Math.round(person.confidence * 100)}%
-              </Badge>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {person.time}
-            </p>
-            <div className="flex flex-wrap gap-1 mt-2">
-              {person.details.distinctive_features.slice(0, 2).map((feature, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {feature}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 

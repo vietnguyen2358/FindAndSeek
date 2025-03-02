@@ -206,17 +206,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         messages: [
           {
             role: "system",
-            content: `Parse the search query and extract structured filters. For example, if input is "man wearing black pants and green shirt seen downtown around 3pm", output should be:
-            {
-              "filters": [
-                {"category": "clothing", "value": "black pants"},
-                {"category": "clothing", "value": "green shirt"},
-                {"category": "location", "value": "downtown"},
-                {"category": "time", "value": "around 3pm"}
-              ]
-            }
-            Categories can be: clothing, physical, location, time, age, action.
-            Return only JSON with no additional text.`
+            content: `You are an AI assistant helping to find missing persons. Analyze user queries and help extract relevant information.
+
+When users provide descriptions, respond in this format:
+{
+  "filters": [
+    {"category": "clothing", "value": "specific clothing item or color"},
+    {"category": "physical", "value": "physical description"},
+    {"category": "location", "value": "location mentioned"},
+    {"category": "time", "value": "time or timeframe mentioned"},
+    {"category": "age", "value": "age or age range"},
+    {"category": "action", "value": "what the person was doing"}
+  ],
+  "response": "Natural language response about what you understood",
+  "suggestions": ["Suggested follow-up questions or additional details to ask"]
+}
+
+Break down complex descriptions into specific search criteria. Be precise and thorough.`
           },
           {
             role: "user",
