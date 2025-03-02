@@ -4,7 +4,7 @@ A sophisticated surveillance monitoring system with real-time camera feed displa
 
 ## Overview
 
-FindAndSeekPro is a web application designed for security personnel and investigators to monitor camera feeds, track detections, and manage case files. The application features a clean, modern UI with an intuitive dashboard for real-time surveillance monitoring.
+FindAndSeek is a web application designed for security personnel and investigators to monitor camera feeds, track detections, and manage case files. The application features a clean, modern UI with an intuitive dashboard for real-time surveillance monitoring.
 
 ## Project Structure
 
@@ -76,8 +76,6 @@ If images are not displaying correctly:
 2. Access images using paths relative to the root (e.g., `/Screenshot 2025-03-02 at 7.33.00 AM.png`)
 3. Check browser console for 404 errors related to image loading
 
-## Development
-
 ### Server
 
 The server is built with Express.js and provides REST API endpoints for:
@@ -92,7 +90,3 @@ The client is built with:
 - Tailwind CSS for styling
 - React Router for navigation
 5. Open a pull request
-
-## License
-
-This project is licensed under the MIT License.
