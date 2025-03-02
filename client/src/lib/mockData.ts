@@ -113,23 +113,6 @@ export const mockAlerts: Alert[] = [
   },
 ];
 
-// Generate mock video frames with person silhouettes
-const generatePersonSilhouette = (x: number, y: number, scale = 1) => `
-  <g transform="translate(${x},${y}) scale(${scale})">
-    <path d="M0 0 
-      C0 -20 -10 -40 -30 -40
-      C-50 -40 -60 -20 -60 0
-      C-60 20 -50 40 -30 40
-      C-10 40 0 20 0 0 Z
-      M-45 40 L-45 140 L-15 140 L-15 40 Z
-      M-45 80 L-60 160 L-40 160 L-30 100 L-20 160 L0 160 L-15 80 Z"
-      fill="rgba(59, 130, 246, 0.5)" 
-      stroke="rgba(59, 130, 246, 0.8)" 
-      stroke-width="2"/>
-  </g>
-`;
-
-// Create mock video frames - first one is the street image, rest are generated SVGs
 export const mockVideoFrames = [
   // Real image URL for the first frame
   "https://media.gettyimages.com/id/1459839633/photo/people-walking-across-crosswalk-in-city-downtown-top-view.jpg?s=612x612&w=gi&k=20&c=U2wnD0_EEZDO2xT62DAR4HexIsjBThPwOpykkabEKOU=",
@@ -141,16 +124,6 @@ export const mockVideoFrames = [
         <text x="50%" y="10%" font-family="Arial" font-size="24" fill="white" text-anchor="middle">
           Live Camera Feed - Frame ${i + 2}
         </text>
-        ${i % 3 === 0 ? `
-          ${generatePersonSilhouette(320, 200, 1)}
-          ${generatePersonSilhouette(480, 220, 0.8)}
-          ${generatePersonSilhouette(160, 240, 1.2)}
-        ` : i % 3 === 1 ? `
-          ${generatePersonSilhouette(350, 210, 1.1)}
-          ${generatePersonSilhouette(200, 230, 0.9)}
-        ` : `
-          ${generatePersonSilhouette(300, 220, 1)}
-        `}
       </svg>
     `)}`
   )
