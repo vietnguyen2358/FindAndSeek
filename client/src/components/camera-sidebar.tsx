@@ -4,7 +4,7 @@ import type { DetectedPerson, MapPin } from "@shared/types";
 import { cameraFeeds } from "@/lib/mockData";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, User } from "lucide-react";
 import { useState } from "react";
 
 interface CameraSidebarProps {
@@ -38,7 +38,7 @@ export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) 
       <CardContent className="flex-1 space-y-4 p-4">
         <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
           <img
-            src={`/images/cameras/${cameraFeeds[pin.id as keyof typeof cameraFeeds]}.jpg`} // Updated image path
+            src={cameraFeeds[pin.id as keyof typeof cameraFeeds]}
             className="w-full h-full object-cover"
             alt={`Camera feed from ${pin.location}`}
             onError={handleImageError}
@@ -63,14 +63,25 @@ export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) 
               ) : (
                 detections.map((person) => (
                   <Card key={person.id} className="p-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{person.description}</span>
-                        <Badge variant="outline">{Math.round(person.confidence * 100)}%</Badge>
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-secondary rounded-full">
+                        <User className="h-4 w-4 text-secondary-foreground" />
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(person.time).toLocaleString()}
-                      </p>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-medium">{person.details.age} years</div>
+                          <Badge variant="outline">{Math.round(person.confidence * 100)}%</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <p><strong>Wearing:</strong> {person.details.clothing}</p>
+                          <p><strong>Location:</strong> {person.details.environment}</p>
+                          <p><strong>Movement:</strong> {person.details.movement}</p>
+                          {person.details.distinctive_features.length > 0 && (
+                            <p><strong>Distinctive:</strong> {person.details.distinctive_features.join(", ")}</p>
+                          )}
+                          <p className="text-[10px] mt-1">{new Date(person.time).toLocaleString()}</p>
+                        </div>
+                      </div>
                     </div>
                   </Card>
                 ))
