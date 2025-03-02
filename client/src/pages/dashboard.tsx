@@ -38,7 +38,6 @@ export default function Dashboard() {
     }
   ]);
 
-  // Scroll chat to bottom when messages change
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current;
@@ -65,7 +64,6 @@ export default function Dashboard() {
       };
       setChatMessages(prev => [...prev, userMessage]);
 
-      // First, get AI analysis of the query
       const aiResponse = await apiRequest('/api/parse-search', {
         method: 'POST',
         body: JSON.stringify({
@@ -77,12 +75,10 @@ export default function Dashboard() {
       if (aiResponse.matches?.length > 0) {
         setSearchResults(aiResponse.matches);
 
-        // Find the highest scoring match
         const bestMatch = aiResponse.matches.reduce((prev: any, current: any) => 
           (current.matchScore || 0) > (prev.matchScore || 0) ? current : prev
         );
 
-        // Find corresponding camera pin and center map
         const cameraPin = mockPins.find(pin => 
           pin.type === "camera" && pin.id === bestMatch.cameraId
         );
@@ -93,7 +89,6 @@ export default function Dashboard() {
           setMapZoom(16);
         }
 
-        // Add AI response to chat
         setChatMessages(prev => [
           ...prev,
           {
@@ -113,7 +108,6 @@ export default function Dashboard() {
           }
         ]);
       }
-
     } catch (error) {
       console.error('Error processing search:', error);
       setChatMessages(prev => [
@@ -175,40 +169,42 @@ export default function Dashboard() {
 
       <div className="container mx-auto py-6">
         <div className="grid grid-cols-12 gap-6">
-          {selectedPin ? (
-            <>
-              <div className="col-span-8">
-                <Card className="h-[calc(100vh-10rem)]">
-                  <InteractiveMap
-                    center={mapCenter}
-                    zoom={mapZoom}
-                    pins={mockPins}
-                    onPinClick={handlePinClick}
-                    highlightedPinId={highlightedPinId}
-                  />
-                </Card>
-              </div>
-              <div className="col-span-4">
-                <CameraSidebar
-                  pin={selectedPin}
-                  onClose={() => setSelectedPin(null)}
-                  detections={detections}
-                />
-              </div>
-            </>
-          ) : (
-            <div className="col-span-9">
-              <Card className="h-[calc(100vh-10rem)]">
-                <InteractiveMap
-                  center={mapCenter}
-                  zoom={mapZoom}
-                  pins={mockPins}
-                  onPinClick={handlePinClick}
-                  highlightedPinId={highlightedPinId}
-                />
+          {/* Left Camera Panel */}
+          <div className="col-span-3">
+            {selectedPin ? (
+              <CameraSidebar
+                pin={selectedPin}
+                onClose={() => setSelectedPin(null)}
+                detections={detections}
+              />
+            ) : (
+              <Card className="h-[calc(100vh-10rem)] flex flex-col">
+                <CardHeader>
+                  <CardTitle>Select a Camera</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Click on a camera pin on the map to view its live feed and detections.
+                  </p>
+                </CardContent>
               </Card>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Center Map */}
+          <div className="col-span-6">
+            <Card className="h-[calc(100vh-10rem)]">
+              <InteractiveMap
+                center={mapCenter}
+                zoom={mapZoom}
+                pins={mockPins}
+                onPinClick={handlePinClick}
+                highlightedPinId={highlightedPinId}
+              />
+            </Card>
+          </div>
+
+          {/* Right AI Assistant */}
           <div className="col-span-3">
             <Card className="h-[calc(100vh-10rem)] flex flex-col">
               <CardHeader className="pb-3">
