@@ -1,19 +1,23 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DetectedPerson } from "@shared/types";
 import { cameraImages } from "@/lib/mockData";
+import { Badge } from "@/components/ui/badge";
 
 interface VideoPlayerProps {
   showDetections?: boolean;
   onPersonsDetected?: (persons: DetectedPerson[]) => void;
   cameraId: number;
+  searchResults?: DetectedPerson[];
 }
 
 export function VideoPlayer({ 
   showDetections = true,
   onPersonsDetected,
-  cameraId
+  cameraId,
+  searchResults = []
 }: VideoPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -35,6 +39,7 @@ export function VideoPlayer({
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       try {
+        setIsProcessing(true);
         console.log('Analyzing image:', img.src);
         // Send the image URL for analysis
         const response = await fetch('/api/analyze-frame', {
@@ -61,8 +66,17 @@ export function VideoPlayer({
             const [x, y, width, height] = detection.bbox || [0, 0, 0, 0];
             const confidence = detection.confidence || 0;
 
+            // Check if this detection matches any search results
+            const matchingResult = searchResults.find(result => 
+              result.description === detection.description
+            );
+
+            // Use different colors for matched vs unmatched detections
+            const color = matchingResult ? '#22c55e' : '#3b82f6';
+            const alpha = matchingResult ? 0.3 : 0.2;
+
             // Draw semi-transparent background
-            ctx.fillStyle = `rgba(59, 130, 246, ${confidence * 0.2})`;
+            ctx.fillStyle = `rgba(${color.slice(1).match(/.{2}/g)?.map(x => parseInt(x, 16)).join(',')}, ${alpha})`;
             ctx.fillRect(
               x * canvas.width,
               y * canvas.height,
@@ -71,8 +85,8 @@ export function VideoPlayer({
             );
 
             // Draw box
-            ctx.strokeStyle = '#3b82f6';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = matchingResult ? 3 : 2;
             ctx.strokeRect(
               x * canvas.width,
               y * canvas.height,
@@ -82,12 +96,45 @@ export function VideoPlayer({
 
             // Show confidence and description
             ctx.fillStyle = "white";
-            ctx.font = "16px Arial";
-            ctx.fillText(
-              `${Math.round(confidence * 100)}% - ${detection.description}`,
+            ctx.font = matchingResult ? "bold 16px Arial" : "16px Arial";
+
+            // Draw text background for better readability
+            const text = `${Math.round(confidence * 100)}% - ${detection.description}`;
+            const textWidth = ctx.measureText(text).width;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(
               x * canvas.width,
+              y * canvas.height - 25,
+              textWidth + 10,
+              25
+            );
+
+            // Draw text
+            ctx.fillStyle = "white";
+            ctx.fillText(
+              text,
+              x * canvas.width + 5,
               y * canvas.height - 5
             );
+
+            // If it's a match, add a "MATCH" badge
+            if (matchingResult) {
+              const matchScore = Math.round((matchingResult as any).matchScore * 100);
+              ctx.fillStyle = '#22c55e';
+              ctx.fillRect(
+                x * canvas.width,
+                y * canvas.height - 45,
+                90,
+                20
+              );
+              ctx.fillStyle = "white";
+              ctx.font = "bold 12px Arial";
+              ctx.fillText(
+                `${matchScore}% MATCH`,
+                x * canvas.width + 5,
+                y * canvas.height - 30
+              );
+            }
           });
         }
 
@@ -113,11 +160,14 @@ export function VideoPlayer({
 
       } catch (error) {
         console.error('Error analyzing image:', error);
+      } finally {
+        setIsProcessing(false);
       }
     };
 
     img.onerror = (error) => {
       console.error('Error loading image:', error);
+      setIsProcessing(false);
     };
 
     // Load the test image
@@ -125,7 +175,7 @@ export function VideoPlayer({
     console.log('Loading camera image:', imageUrl);
     img.src = imageUrl;
 
-  }, [showDetections, onPersonsDetected, cameraId]);
+  }, [showDetections, onPersonsDetected, cameraId, searchResults]);
 
   return (
     <div className="relative aspect-video w-full h-full">
@@ -133,6 +183,14 @@ export function VideoPlayer({
         ref={canvasRef}
         className="absolute inset-0 w-full h-full object-contain bg-black rounded-lg"
       />
+      {isProcessing && (
+        <Badge 
+          variant="secondary" 
+          className="absolute top-2 right-2 animate-pulse"
+        >
+          Processing...
+        </Badge>
+      )}
     </div>
   );
 }

@@ -66,7 +66,7 @@ export default function Dashboard() {
       // Process with ChatGPT, including current detections
       const result = await apiRequest('/api/parse-search', {
         method: 'POST',
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           query,
           detections // Send current detections for analysis
         })
@@ -127,7 +127,37 @@ export default function Dashboard() {
   };
 
   const handlePersonsDetected = (persons: DetectedPerson[]) => {
-    setDetections(prev => [...prev, ...persons]);
+    // Update detections list with new detections
+    setDetections(prev => {
+      // Combine existing and new detections, removing duplicates based on description
+      const combined = [...prev];
+      persons.forEach(person => {
+        const existingIndex = combined.findIndex(p => p.description === person.description);
+        if (existingIndex === -1) {
+          combined.push(person);
+        } else {
+          combined[existingIndex] = person; // Update with latest detection
+        }
+      });
+      return combined;
+    });
+
+    // If we have active search results, check for matches
+    if (searchResults.length > 0) {
+      // Filter new detections that match our search criteria
+      const newMatches = persons.filter(person =>
+        searchResults.some(result => result.description === person.description)
+      );
+
+      if (newMatches.length > 0) {
+        // Add a system message about the new matches
+        setChatMessages(prev => [...prev, {
+          role: 'system',
+          content: `🎯 Found ${newMatches.length} new match${newMatches.length > 1 ? 'es' : ''} in latest detection!`,
+          timestamp: new Date().toLocaleString()
+        }]);
+      }
+    }
   };
 
   return (
@@ -290,6 +320,7 @@ export default function Dashboard() {
                   showDetections={true}
                   onPersonsDetected={handlePersonsDetected}
                   cameraId={selectedPin.id}
+                  searchResults={searchResults}
                 />
               </div>
               <div className="flex items-center justify-between">
