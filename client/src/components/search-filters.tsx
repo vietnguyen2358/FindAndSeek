@@ -79,7 +79,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
         <div className="flex-1 flex gap-2">
           <Input
             className="flex-1 bg-background border-border"
-            placeholder="Search by name, description, or location..."
+            placeholder="Search by description (e.g. 'person wearing red jacket near downtown')"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}

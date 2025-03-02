@@ -2,12 +2,9 @@ import { useState } from "react";
 import { InteractiveMap } from "@/components/interactive-map";
 import { SearchFilters } from "@/components/search-filters";
 import { AlertsPanel } from "@/components/alerts-panel";
-import { VideoPlayer } from "@/components/video-player";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Mic, Send, Camera, Bell } from "lucide-react";
-import { mockPins } from "@/lib/mockData";
+import { mockPins, mockDetections, personImages } from "@/lib/mockData";
 import type { DetectedPerson } from "@shared/types";
 import {
   Dialog,
@@ -17,55 +14,50 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Camera, UserSearch, Bell } from "lucide-react";
 
 export default function Dashboard() {
-  const [selectedCamera, setSelectedCamera] = useState<{
-    id: number;
-    location: string;
-  } | null>(null);
-  const [hideDetections, setHideDetections] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<DetectedPerson | null>(null);
-  const [detectedPersons, setDetectedPersons] = useState<DetectedPerson[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [chatMessages, setChatMessages] = useState<Array<{
-    role: 'user' | 'system';
-    content: string;
-  }>>([]);
+  const [detections, setDetections] = useState(mockDetections);
+  const [searchResults, setSearchResults] = useState<DetectedPerson[]>([]);
 
-  const handlePersonsDetected = (persons: DetectedPerson[]) => {
-    setDetectedPersons(persons);
-  };
-
-  const handleSendMessage = () => {
-    if (!searchQuery.trim()) return;
-
-    setChatMessages([
-      ...chatMessages,
-      { role: 'user', content: searchQuery },
-      { role: 'system', content: 'Searching for matches...' }
-    ]);
-    setSearchQuery("");
-  };
-
-  const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    // TODO: Implement voice recording
+  const handleSearch = (filters: string[]) => {
+    // Simple mock search implementation
+    const results = mockDetections.filter(person => {
+      const searchText = `${person.description} ${person.details.clothing} ${person.details.distinctive_features.join(' ')}`.toLowerCase();
+      return filters.some(filter => searchText.includes(filter.toLowerCase()));
+    });
+    setSearchResults(results);
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-4">
+      <div className="container mx-auto p-4 space-y-4">
+        {/* Search Bar */}
+        <SearchFilters onSearch={handleSearch} />
+
         <div className="grid grid-cols-12 gap-4">
-          {/* Left Panel - Camera Views & Alerts */}
-          <div className="col-span-3">
-            <Tabs defaultValue="cameras" className="w-full">
+          {/* Left Panel - Map */}
+          <div className="col-span-8">
+            <InteractiveMap
+              center={[-74.006, 40.7128]}
+              zoom={14}
+              pins={mockPins}
+              onPinClick={() => {}}
+            />
+          </div>
+
+          {/* Right Panel - Detections & Alerts */}
+          <div className="col-span-4">
+            <Tabs defaultValue="detections" className="h-full">
               <TabsList className="w-full">
-                <TabsTrigger value="cameras" className="flex-1">
+                <TabsTrigger value="detections" className="flex-1">
                   <Camera className="w-4 h-4 mr-2" />
-                  Cameras
+                  Detections
+                </TabsTrigger>
+                <TabsTrigger value="search" className="flex-1">
+                  <UserSearch className="w-4 h-4 mr-2" />
+                  Search
                 </TabsTrigger>
                 <TabsTrigger value="alerts" className="flex-1">
                   <Bell className="w-4 h-4 mr-2" />
@@ -73,115 +65,38 @@ export default function Dashboard() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="cameras" className="mt-4">
-                {selectedCamera && (
-                  <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-lg font-medium">
-                        {selectedCamera.location}
-                      </CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setHideDetections(!hideDetections)}
-                      >
-                        {hideDetections ? (
-                          <Eye className="h-4 w-4" />
-                        ) : (
-                          <EyeOff className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="aspect-video bg-black rounded-lg relative">
-                        <VideoPlayer
-                          showDetections={!hideDetections}
-                          onPersonsDetected={handlePersonsDetected}
-                          cameraId={selectedCamera.id}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+              <TabsContent value="detections" className="mt-4 h-[calc(100vh-12rem)]">
+                <ScrollArea className="h-full pr-4">
+                  <div className="space-y-4">
+                    {detections.map((person) => (
+                      <PersonCard
+                        key={person.id}
+                        person={person}
+                        onClick={() => setSelectedPerson(person)}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="search" className="mt-4 h-[calc(100vh-12rem)]">
+                <ScrollArea className="h-full pr-4">
+                  <div className="space-y-4">
+                    {searchResults.map((person) => (
+                      <PersonCard
+                        key={person.id}
+                        person={person}
+                        onClick={() => setSelectedPerson(person)}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
               </TabsContent>
 
               <TabsContent value="alerts" className="mt-4">
                 <AlertsPanel />
               </TabsContent>
             </Tabs>
-          </div>
-
-          {/* Center - Map */}
-          <div className="col-span-6">
-            <InteractiveMap
-              center={[-74.006, 40.7128]}
-              zoom={12}
-              pins={mockPins}
-              onPinClick={(pin) =>
-                setSelectedCamera({ id: pin.id, location: pin.location })
-              }
-            />
-          </div>
-
-          {/* Right Panel - Search & Chat */}
-          <div className="col-span-3">
-            <Card>
-              <CardHeader>
-                <CardTitle>Search & Communicate</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Voice Input */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={isRecording ? "destructive" : "outline"}
-                    size="icon"
-                    onClick={toggleRecording}
-                  >
-                    <Mic className={`h-4 w-4 ${isRecording ? 'animate-pulse' : ''}`} />
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    {isRecording ? 'Recording...' : 'Click to record'}
-                  </span>
-                </div>
-
-                {/* Chat Messages */}
-                <ScrollArea className="h-[400px] pr-4">
-                  <div className="space-y-4">
-                    {chatMessages.map((message, index) => (
-                      <div
-                        key={index}
-                        className={`flex ${
-                          message.role === 'user' ? 'justify-end' : 'justify-start'
-                        }`}
-                      >
-                        <div
-                          className={`rounded-lg px-4 py-2 max-w-[80%] ${
-                            message.role === 'user'
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted'
-                          }`}
-                        >
-                          {message.content}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-
-                {/* Search Input */}
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Describe person or location..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  />
-                  <Button size="icon" onClick={handleSendMessage}>
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
@@ -199,14 +114,12 @@ export default function Dashboard() {
           </DialogHeader>
           {selectedPerson && (
             <div className="space-y-4">
-              <div className="aspect-square relative overflow-hidden rounded-lg bg-muted">
-                {selectedPerson.croppedImage && (
-                  <img
-                    src={selectedPerson.croppedImage}
-                    alt="Detected person"
-                    className="object-cover w-full h-full"
-                  />
-                )}
+              <div className="aspect-square relative overflow-hidden rounded-lg">
+                <img
+                  src={personImages[selectedPerson.id as keyof typeof personImages]}
+                  alt="Detected person"
+                  className="object-cover w-full h-full"
+                />
               </div>
               <div className="space-y-3">
                 <div>
@@ -216,10 +129,6 @@ export default function Dashboard() {
                 <div>
                   <h4 className="text-sm font-medium">Time Detected</h4>
                   <p className="text-sm text-muted-foreground">{selectedPerson.time}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium">Location</h4>
-                  <p className="text-sm text-muted-foreground">{selectedCamera?.location}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium">Details</h4>
@@ -244,5 +153,42 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function PersonCard({ person, onClick }: { person: DetectedPerson; onClick: () => void }) {
+  return (
+    <Card
+      className="cursor-pointer hover:bg-accent/50 transition-colors"
+      onClick={onClick}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <img
+            src={personImages[person.id as keyof typeof personImages]}
+            alt={`Person ${person.id}`}
+            className="w-16 h-16 rounded object-cover"
+          />
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <p className="font-medium">{person.description}</p>
+              <Badge variant="outline">
+                {Math.round(person.confidence * 100)}%
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {person.time}
+            </p>
+            <div className="flex flex-wrap gap-1 mt-2">
+              {person.details.distinctive_features.slice(0, 2).map((feature, index) => (
+                <Badge key={index} variant="secondary" className="text-xs">
+                  {feature}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
