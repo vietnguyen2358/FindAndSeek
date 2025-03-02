@@ -92,7 +92,7 @@ async function detectPeopleWithRoboflow(imageUrl: string): Promise<{
   confidence: number;
 }[]> {
   try {
-    console.log('Starting Roboflow person detection for image:', imageUrl);
+    console.log('Starting Roboflow API call for image:', imageUrl);
 
     const response = await fetch('https://detect.roboflow.com/infer/workflows/mizantech-bww5d/detect-count-and-visualize', {
       method: 'POST',
@@ -102,13 +102,13 @@ async function detectPeopleWithRoboflow(imageUrl: string): Promise<{
       body: JSON.stringify({
         api_key: '3RyAsQaKrfI80jA1oi9Z',
         inputs: {
-          "image": { "type": "url", "value": imageUrl }
+          "image": {"type": "url", "value": imageUrl}
         }
       })
     });
 
     const result = await response.json();
-    console.log('Roboflow API response:', JSON.stringify(result, null, 2));
+    console.log('Raw Roboflow API response:', JSON.stringify(result, null, 2));
 
     if (!response.ok) {
       throw new Error(`Roboflow API error: ${JSON.stringify(result)}`);
@@ -128,6 +128,7 @@ async function detectPeopleWithRoboflow(imageUrl: string): Promise<{
       }));
 
     console.log(`Found ${detections.length} people in the image`);
+    console.log('Processed detections:', detections);
     return detections;
   } catch (error) {
     console.error("Error detecting people with Roboflow:", error);

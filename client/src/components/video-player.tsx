@@ -3,17 +3,12 @@ import type { DetectedPerson } from "@shared/types";
 import { cameraImages } from "@/lib/mockData";
 
 interface VideoPlayerProps {
-  detections?: {
-    bbox: [number, number, number, number];
-    confidence: number;
-  }[];
   showDetections?: boolean;
   onPersonsDetected?: (persons: DetectedPerson[]) => void;
   cameraId: number;
 }
 
 export function VideoPlayer({ 
-  detections = [], 
   showDetections = true,
   onPersonsDetected,
   cameraId
@@ -40,6 +35,7 @@ export function VideoPlayer({
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       try {
+        console.log('Sending frame for analysis:', img.src);
         // Send the image URL for analysis
         const response = await fetch('/api/analyze-frame', {
           method: 'POST',
@@ -57,10 +53,11 @@ export function VideoPlayer({
         }
 
         const analysis = await response.json();
+        console.log('Frame analysis result:', analysis);
 
         if (showDetections && analysis.detections) {
           // Draw detection boxes
-          analysis.detections.forEach(({ bbox, confidence }) => {
+          analysis.detections.forEach(({ bbox, confidence, description }) => {
             const [x, y, width, height] = bbox;
 
             // Draw semi-transparent background
