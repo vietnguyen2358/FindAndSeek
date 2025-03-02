@@ -38,6 +38,24 @@ export const cameraFootage = pgTable("camera_footage", {
   })
 });
 
+export const personDetections = pgTable("person_detections", {
+  id: serial("id").primaryKey(),
+  description: text("description").notNull(),
+  confidence: json("confidence").notNull(),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  thumbnail: text("thumbnail").notNull(),
+  bbox: json("bbox").notNull(),
+  details: jsonb("details").notNull(),
+  cameraId: integer("camera_id"),
+  matchScore: json("match_score")
+});
+
+export const cameras = pgTable("cameras", {
+  id: serial("id").primaryKey(),
+  location: text("location").notNull(),
+  lastActive: timestamp("last_active").defaultNow()
+});
+
 export const insertCaseSchema = createInsertSchema(cases).omit({ 
   id: true,
   createdAt: true,
@@ -51,10 +69,24 @@ export const insertCameraFootageSchema = createInsertSchema(cameraFootage).omit(
   aiAnalysis: true
 });
 
+export const insertPersonDetectionSchema = createInsertSchema(personDetections).omit({ 
+  id: true,
+  matchScore: true
+});
+
+export const insertCameraSchema = createInsertSchema(cameras).omit({
+  id: true,
+  lastActive: true
+});
+
 export type Case = typeof cases.$inferSelect;
 export type InsertCase = z.infer<typeof insertCaseSchema>;
 export type CameraFootage = typeof cameraFootage.$inferSelect;
 export type InsertCameraFootage = z.infer<typeof insertCameraFootageSchema>;
+export type PersonDetection = typeof personDetections.$inferSelect;
+export type InsertPersonDetection = z.infer<typeof insertPersonDetectionSchema>;
+export type Camera = typeof cameras.$inferSelect;
+export type InsertCamera = z.infer<typeof insertCameraSchema>;
 
 // Additional type definitions for AI analysis results
 export interface TimelineEvent {
