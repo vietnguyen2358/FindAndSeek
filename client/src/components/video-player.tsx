@@ -19,7 +19,6 @@ export function VideoPlayer({
   cameraId
 }: VideoPlayerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -39,9 +38,9 @@ export function VideoPlayer({
 
       // Draw the image
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      imageRef.current = img;
 
       try {
+        // Send the image URL for analysis
         const response = await fetch('/api/analyze-frame', {
           method: 'POST',
           headers: {
@@ -85,7 +84,7 @@ export function VideoPlayer({
 
             // Show confidence
             ctx.fillStyle = "white";
-            ctx.font = "12px Arial";
+            ctx.font = "16px Arial";
             ctx.fillText(
               `${Math.round(confidence * 100)}%`,
               x * canvas.width,
@@ -104,17 +103,19 @@ export function VideoPlayer({
       }
     };
 
-    // Use the camera image based on camera ID
-    const imageUrl = cameraImages[cameraId as keyof typeof cameraImages] || cameraImages[1];
+    // Load the test image
+    const imageUrl = cameraImages[cameraId as keyof typeof cameraImages];
     console.log('Loading camera image:', imageUrl);
     img.src = imageUrl;
 
   }, [showDetections, onPersonsDetected, cameraId]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="w-full h-full bg-black rounded-lg object-contain"
-    />
+    <div className="relative aspect-video w-full h-full">
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full object-contain bg-black rounded-lg"
+      />
+    </div>
   );
 }
