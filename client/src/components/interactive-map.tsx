@@ -33,6 +33,7 @@ export function InteractiveMap({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<{ [key: number]: mapboxgl.Marker }>({});
+  const [isMapReady, setIsMapReady] = useState(false);
 
   // Initialize map
   useEffect(() => {
@@ -60,6 +61,8 @@ export function InteractiveMap({
 
       // Adjust text colors
       newMap.setPaintProperty('label-text', 'text-color', '#666666');
+
+      setIsMapReady(true);
     });
 
     map.current = newMap;
@@ -76,7 +79,7 @@ export function InteractiveMap({
   // Handle pins updates
   useEffect(() => {
     const currentMap = map.current;
-    if (!currentMap) return;
+    if (!currentMap || !isMapReady) return;
 
     // Track existing pins to remove stale ones
     const currentPinIds = new Set(pins.map(pin => pin.id));
@@ -136,42 +139,35 @@ export function InteractiveMap({
               .setHTML(popupContent)
           );
 
-        if (currentMap) {
-          marker.addTo(currentMap);
-          markersRef.current[pin.id] = marker;
+        marker.addTo(currentMap);
+        markersRef.current[pin.id] = marker;
 
-          // Add click handler
-          if (onPinClick) {
-            el.addEventListener("click", () => onPinClick(pin));
-          }
+        // Add click handler
+        if (onPinClick) {
+          el.addEventListener("click", () => onPinClick(pin));
         }
       } else {
         // Update existing marker
         marker.getElement().replaceWith(el);
         marker.setLngLat([pin.lng, pin.lat]);
-        const popup = marker.getPopup();
-        if (popup) {
-          popup.setHTML(popupContent);
-        }
+
+        // Ensure marker stays in place
+        marker.addTo(currentMap);
       }
     });
-  }, [pins, highlightedPinId, onPinClick]);
+  }, [pins, highlightedPinId, onPinClick, isMapReady]);
 
   // Handle center and zoom changes
   useEffect(() => {
-    if (!map.current) return;
+    if (!map.current || !isMapReady) return;
 
-    // Smoothly animate to new center and zoom
     map.current.flyTo({
       center,
       zoom,
       duration: 2000,
-      essential: true,
-      curve: 1.42,
-      speed: 1.2,
-      easing: (t) => t
+      essential: true
     });
-  }, [center, zoom]);
+  }, [center, zoom, isMapReady]);
 
   return (
     <Card className="w-full h-[calc(100vh-10rem)] overflow-hidden border-border bg-background relative">

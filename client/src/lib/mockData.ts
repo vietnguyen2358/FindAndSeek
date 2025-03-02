@@ -1,6 +1,6 @@
 import type { MapPin, DetectedPerson } from "@shared/types";
 
-// Define key locations in New York with Herald Square as primary camera
+// Define key locations in New York with live camera feeds
 export const mockPins: MapPin[] = [
   {
     id: 1,
@@ -40,12 +40,12 @@ export const mockPins: MapPin[] = [
   }
 ];
 
-// Live camera feed for Herald Square and other locations (if available)
+// Live camera feeds from various NYC locations
 export const cameraFeeds = {
-  1: "https://www.earthcam.com/usa/newyork/heraldsquare/?cam=heraldsquare_nyc",
-  2: "",
-  3: "",
-  4: ""
+  1: "https://www.earthcam.com/usa/newyork/heraldsquare/?cam=heraldsquare_nyc", // Herald Square
+  2: "https://www.earthcam.com/usa/newyork/timessquare/?cam=tsrobo1", // Times Square
+  3: "https://www.earthcam.com/usa/newyork/grandcentral/?cam=grandcentral", // Grand Central
+  4: "https://www.earthcam.com/usa/newyork/empirestatebuilding/?cam=esb_skyline" // Empire State Building
 };
 
 // Empty mock data for other features

@@ -33,7 +33,7 @@ export default function Dashboard() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: "Hello! I'm your AI assistant specialized in helping find missing persons. I can help analyze descriptions and search through our database. How can I assist you today?",
+      content: "Hello! I'm your AI assistant specialized in helping find missing persons. I can help analyze descriptions, search through camera feeds, and track potential matches. How can I assist you today?",
       timestamp: new Date().toLocaleString()
     }
   ]);
@@ -65,7 +65,8 @@ export default function Dashboard() {
       };
       setChatMessages(prev => [...prev, userMessage]);
 
-      const result = await apiRequest('/api/parse-search', {
+      // First, get AI analysis of the query
+      const aiResponse = await apiRequest('/api/parse-search', {
         method: 'POST',
         body: JSON.stringify({
           query,
@@ -73,11 +74,11 @@ export default function Dashboard() {
         })
       });
 
-      if (result.matches?.length > 0) {
-        setSearchResults(result.matches);
+      if (aiResponse.matches?.length > 0) {
+        setSearchResults(aiResponse.matches);
 
         // Find the highest scoring match
-        const bestMatch = result.matches.reduce((prev: any, current: any) => 
+        const bestMatch = aiResponse.matches.reduce((prev: any, current: any) => 
           (current.matchScore || 0) > (prev.matchScore || 0) ? current : prev
         );
 
@@ -92,11 +93,12 @@ export default function Dashboard() {
           setMapZoom(16);
         }
 
+        // Add AI response to chat
         setChatMessages(prev => [
           ...prev,
           {
             role: 'assistant',
-            content: `Found matches! Centering on best match at ${cameraPin?.location || 'location'}.\n\n${result.analysis.join('\n')}`,
+            content: `I've analyzed your description and found some potential matches. Let me show you the best match, located at ${cameraPin?.location || 'a camera location'}.\n\n${aiResponse.analysis.join('\n')}\n\nI'll continue monitoring all camera feeds for additional matches.`,
             timestamp: new Date().toLocaleString()
           }
         ]);
@@ -106,7 +108,7 @@ export default function Dashboard() {
           ...prev,
           {
             role: 'assistant',
-            content: 'No matches found yet. I\'ll keep looking.',
+            content: "I've analyzed your description, but I haven't found any matches in our current camera feeds yet. I'll keep monitoring all locations and alert you as soon as I detect a potential match. Could you provide any additional details that might help with the search?",
             timestamp: new Date().toLocaleString()
           }
         ]);
@@ -118,7 +120,7 @@ export default function Dashboard() {
         ...prev,
         {
           role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
+          content: 'I apologize, but I encountered an error while processing your request. Please try again, and feel free to provide more details to help with the search.',
           timestamp: new Date().toLocaleString()
         }
       ]);
