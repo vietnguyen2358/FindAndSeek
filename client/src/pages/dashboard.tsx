@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Camera, UserSearch, MapPin, Send, Bell, Filter, History } from "lucide-react";
-import { mockPins, mockDetections } from "@/lib/mockData";
 import type { DetectedPerson, MapPin as MapPinType } from "@shared/types";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,7 +18,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { PersonCard } from "@/components/person-card";
 import { VoiceInput } from "@/components/voice-input";
 import { CallButton } from "@/components/call-button";
-import { VideoPlayer } from "@/components/video-player";
+
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -33,7 +32,7 @@ export default function Dashboard() {
   const [selectedPin, setSelectedPin] = useState<MapPinType | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([-74.006, 40.7128]);
   const [mapZoom, setMapZoom] = useState(14);
-  const [detections, setDetections] = useState(mockDetections);
+  const [detections, setDetections] = useState<DetectedPerson[]>([]);
   const [searchResults, setSearchResults] = useState<DetectedPerson[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -76,28 +75,11 @@ export default function Dashboard() {
 
       if (result.matches?.length > 0) {
         setSearchResults(result.matches);
-
-        // Find the highest scoring match
-        const bestMatch = result.matches.reduce((prev: any, current: any) => 
-          (current.matchScore || 0) > (prev.matchScore || 0) ? current : prev
-        );
-
-        // Find corresponding camera pin and center map
-        const cameraPin = mockPins.find(pin => 
-          pin.type === "camera" && pin.id === bestMatch.cameraId
-        );
-
-        if (cameraPin) {
-          setHighlightedPinId(cameraPin.id);
-          setMapCenter([cameraPin.lng, cameraPin.lat]);
-          setMapZoom(16); // Zoom in closer to the match
-        }
-
         setChatMessages(prev => [
           ...prev,
           {
             role: 'assistant',
-            content: `Found matches! Centering on best match at ${cameraPin?.location || 'location'}.\n\n${result.analysis.join('\n')}`,
+            content: result.analysis.join('\n'),
             timestamp: new Date().toLocaleString()
           }
         ]);
@@ -129,37 +111,7 @@ export default function Dashboard() {
     }
   };
 
-  const handlePersonsDetected = (persons: DetectedPerson[]) => {
-    setDetections(prev => {
-      const combined = [...prev];
-      persons.forEach(person => {
-        const existingIndex = combined.findIndex(p => p.description === person.description);
-        if (existingIndex === -1) {
-          combined.push(person);
-        } else {
-          combined[existingIndex] = person;
-        }
-      });
-      return combined;
-    });
-
-    if (searchResults.length > 0) {
-      const newMatches = persons.filter(person =>
-        searchResults.some(result => result.description === person.description)
-      );
-
-      if (newMatches.length > 0) {
-        setChatMessages(prev => [...prev, {
-          role: 'system',
-          content: `🎯 Found ${newMatches.length} new match${newMatches.length > 1 ? 'es' : ''} in latest detection!`,
-          timestamp: new Date().toLocaleString()
-        }]);
-      }
-    }
-  };
-
   const handleVoiceTranscription = (text: string, processed: string) => {
-    // Show recording indicator
     setChatMessages(prev => [...prev, {
       role: 'system',
       content: '🎙️ Recording your message...',
@@ -167,7 +119,6 @@ export default function Dashboard() {
       isAudio: true
     }]);
 
-    // Show transcribed text
     setChatMessages(prev => [...prev, {
       role: 'user',
       content: text,
@@ -175,33 +126,13 @@ export default function Dashboard() {
       isAudio: true
     }]);
 
-    // Show AI's processed response
     setChatMessages(prev => [...prev, {
       role: 'assistant',
       content: processed,
       timestamp: new Date().toLocaleString()
     }]);
 
-    // Process as a search if we have detected entities
     handleSearch(processed);
-  };
-
-  const handlePersonClick = (person: DetectedPerson) => {
-    setSelectedPerson(person);
-
-    // Find the camera pin associated with this detection
-    const cameraPin = mockPins.find(pin =>
-      pin.type === "camera" && pin.id === person.cameraId
-    );
-
-    if (cameraPin) {
-      // Highlight the camera pin
-      setHighlightedPinId(cameraPin.id);
-
-      // Center map on the camera location with animation
-      setMapCenter([cameraPin.lng, cameraPin.lat]);
-      setMapZoom(16); // Zoom in closer
-    }
   };
 
   return (
@@ -210,21 +141,18 @@ export default function Dashboard() {
         <div className="container mx-auto p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <img src="/logo.svg" alt="Find & Seek" className="h-8" />
               <h1 className="text-xl font-bold">Find & Seek</h1>
             </div>
             <div className="flex items-center gap-2">
               <CallButton
                 description="Please describe who you're looking for"
                 onTranscription={(text, processed) => {
-                  // Show recording message
                   setChatMessages(prev => [...prev, {
                     role: 'system',
                     content: '📞 Phone call recorded',
                     timestamp: new Date().toLocaleString()
                   }]);
 
-                  // Show transcribed message
                   setChatMessages(prev => [...prev, {
                     role: 'user',
                     content: text,
@@ -232,7 +160,6 @@ export default function Dashboard() {
                     isAudio: true
                   }]);
 
-                  // Show AI processed response
                   if (processed) {
                     setChatMessages(prev => [...prev, {
                       role: 'assistant',
@@ -240,23 +167,10 @@ export default function Dashboard() {
                       timestamp: new Date().toLocaleString()
                     }]);
 
-                    // Process as a search query
                     handleSearch(processed);
                   }
                 }}
               />
-              <Button variant="outline" size="sm">
-                <History className="w-4 h-4 mr-2" />
-                Search History
-              </Button>
-              <Button variant="outline" size="sm">
-                <Bell className="w-4 h-4 mr-2" />
-                Alerts
-              </Button>
-              <Button variant="outline" size="sm">
-                <Filter className="w-4 h-4 mr-2" />
-                Filters
-              </Button>
             </div>
           </div>
         </div>
@@ -264,83 +178,12 @@ export default function Dashboard() {
 
       <div className="container mx-auto py-6">
         <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-3">
-            <Card className="h-[calc(100vh-10rem)]">
-              <Tabs defaultValue="all" className="h-full">
-                <CardHeader>
-                  <div className="flex items-center justify-between mb-2">
-                    <TabsList className="w-full">
-                      <TabsTrigger value="all">
-                        <Camera className="w-4 h-4 mr-2" />
-                        All Detections
-                      </TabsTrigger>
-                      <TabsTrigger value="matches">
-                        <UserSearch className="w-4 h-4 mr-2" />
-                        Matches
-                        {searchResults.length > 0 && (
-                          <Badge variant="secondary" className="ml-2">
-                            {searchResults.length}
-                          </Badge>
-                        )}
-                      </TabsTrigger>
-                    </TabsList>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="w-full">
-                      <Filter className="w-4 h-4 mr-2" />
-                      Sort By Time
-                    </Button>
-                    <Button variant="outline" size="sm" className="w-full">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      Sort By Location
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <TabsContent value="all" className="m-0">
-                    <ScrollArea className="h-[calc(100vh-16rem)] px-6">
-                      <div className="space-y-4 pb-6">
-                        {detections.map((person) => (
-                          <PersonCard
-                            key={person.id}
-                            person={person}
-                            onClick={() => handlePersonClick(person)}
-                            highlight={searchResults.some(result => result.id === person.id)}
-                          />
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
-                  <TabsContent value="matches" className="m-0">
-                    <ScrollArea className="h-[calc(100vh-16rem)] px-6">
-                      <div className="space-y-4 pb-6">
-                        {searchResults.length === 0 ? (
-                          <div className="text-center text-muted-foreground p-4">
-                            No matches found. Try adjusting your search criteria.
-                          </div>
-                        ) : (
-                          searchResults.map((person) => (
-                            <PersonCard
-                              key={person.id}
-                              person={person}
-                              onClick={() => handlePersonClick(person)}
-                              highlight
-                            />
-                          ))
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
-                </CardContent>
-              </Tabs>
-            </Card>
-          </div>
-          <div className="col-span-6">
+          <div className="col-span-9">
             <Card className="h-[calc(100vh-10rem)]">
               <InteractiveMap
                 center={mapCenter}
                 zoom={mapZoom}
-                pins={mockPins}
+                pins={[]}
                 onPinClick={setSelectedPin}
                 highlightedPinId={highlightedPinId}
               />
@@ -413,92 +256,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      <Dialog open={!!selectedPin} onOpenChange={() => setSelectedPin(null)}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Camera Feed - {selectedPin?.location}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedPin && (
-            <div className="space-y-4">
-              <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                <VideoPlayer
-                  showDetections={true}
-                  onPersonsDetected={handlePersonsDetected}
-                  cameraId={selectedPin.id}
-                  searchResults={searchResults}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  Last updated: {selectedPin.timestamp}
-                </span>
-                <Badge variant="secondary">
-                  {detections.length} people detected
-                </Badge>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-      <Dialog open={!!selectedPerson} onOpenChange={() => setSelectedPerson(null)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserSearch className="w-5 h-5" />
-              Person Details
-              {selectedPerson?.matchScore !== undefined && (
-                <Badge variant="secondary">
-                  {Math.round(selectedPerson.matchScore * 100)}% Match
-                </Badge>
-              )}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedPerson && (
-            <div className="space-y-4">
-              <div className="aspect-square relative overflow-hidden rounded-lg">
-                <img
-                  src={selectedPerson.thumbnail}
-                  alt="Detected person"
-                  className="object-cover w-full h-full"
-                />
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <h4 className="text-sm font-medium">Description</h4>
-                  <p className="text-sm text-muted-foreground">{selectedPerson.description}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium">Camera Information</h4>
-                  <div className="text-sm text-muted-foreground">
-                    <p>Camera ID: {selectedPerson.cameraId}</p>
-                    <p>Location: {selectedPerson.details.environment}</p>
-                    <p>Time Detected: {selectedPerson.time}</p>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium">Details</h4>
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <p>Age: {selectedPerson.details.age}</p>
-                    <p>Clothing: {selectedPerson.details.clothing}</p>
-                    <p>Movement: {selectedPerson.details.movement}</p>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium">Distinctive Features</h4>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {selectedPerson.details.distinctive_features.map((feature, index) => (
-                      <Badge key={index} variant="outline">{feature}</Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
