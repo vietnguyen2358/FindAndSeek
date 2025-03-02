@@ -5,7 +5,7 @@ import { VideoPlayer } from "@/components/video-player";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Camera, UserSearch, MapPin, Send } from "lucide-react";
+import { Camera, UserSearch, MapPin, Send, Bell, Filter, History } from "lucide-react";
 import { mockPins, mockDetections } from "@/lib/mockData";
 import type { DetectedPerson, MapPin as MapPinType, SearchFilter } from "@shared/types";
 import { Input } from "@/components/ui/input";
@@ -42,7 +42,6 @@ export default function Dashboard() {
     }
   ]);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current;
@@ -55,7 +54,6 @@ export default function Dashboard() {
 
     setIsProcessing(true);
     try {
-      // Add user message to chat
       const userMessage: ChatMessage = {
         role: 'user',
         content: query,
@@ -63,7 +61,6 @@ export default function Dashboard() {
       };
       setChatMessages(prev => [...prev, userMessage]);
 
-      // Process search with current detections
       const result = await apiRequest('/api/parse-search', {
         method: 'POST',
         body: JSON.stringify({
@@ -75,7 +72,6 @@ export default function Dashboard() {
       if (result.matches?.length > 0) {
         setSearchResults(result.matches);
 
-        // Add concise match information
         setChatMessages(prev => [
           ...prev,
           {
@@ -113,30 +109,25 @@ export default function Dashboard() {
   };
 
   const handlePersonsDetected = (persons: DetectedPerson[]) => {
-    // Update detections list with new detections
     setDetections(prev => {
-      // Combine existing and new detections, removing duplicates based on description
       const combined = [...prev];
       persons.forEach(person => {
         const existingIndex = combined.findIndex(p => p.description === person.description);
         if (existingIndex === -1) {
           combined.push(person);
         } else {
-          combined[existingIndex] = person; // Update with latest detection
+          combined[existingIndex] = person;
         }
       });
       return combined;
     });
 
-    // If we have active search results, check for matches
     if (searchResults.length > 0) {
-      // Filter new detections that match our search criteria
       const newMatches = persons.filter(person =>
         searchResults.some(result => result.description === person.description)
       );
 
       if (newMatches.length > 0) {
-        // Add a system message about the new matches
         setChatMessages(prev => [...prev, {
           role: 'system',
           content: `🎯 Found ${newMatches.length} new match${newMatches.length > 1 ? 'es' : ''} in latest detection!`,
@@ -148,33 +139,68 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-6">
+      <header className="border-b">
+        <div className="container mx-auto p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <img src="/logo.svg" alt="Logo" className="h-8" />
+              <h1 className="text-xl font-bold">Person Search & Tracking</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">
+                <History className="w-4 h-4 mr-2" />
+                Search History
+              </Button>
+              <Button variant="outline" size="sm">
+                <Bell className="w-4 h-4 mr-2" />
+                Alerts
+              </Button>
+              <Button variant="outline" size="sm">
+                <Filter className="w-4 h-4 mr-2" />
+                Filters
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto py-6">
         <div className="grid grid-cols-12 gap-6">
-          {/* Left Panel - Detections & Matches */}
           <div className="col-span-3">
-            <Card className="h-[calc(100vh-7rem)]">
+            <Card className="h-[calc(100vh-10rem)]">
               <Tabs defaultValue="all" className="h-full">
                 <CardHeader>
-                  <TabsList className="w-full">
-                    <TabsTrigger value="all">
-                      <Camera className="w-4 h-4 mr-2" />
-                      All Detections
-                    </TabsTrigger>
-                    <TabsTrigger value="matches">
-                      <UserSearch className="w-4 h-4 mr-2" />
-                      Matches
-                      {searchResults.length > 0 && (
-                        <Badge variant="secondary" className="ml-2">
-                          {searchResults.length}
-                        </Badge>
-                      )}
-                    </TabsTrigger>
-                  </TabsList>
+                  <div className="flex items-center justify-between mb-2">
+                    <TabsList className="w-full">
+                      <TabsTrigger value="all">
+                        <Camera className="w-4 h-4 mr-2" />
+                        All Detections
+                      </TabsTrigger>
+                      <TabsTrigger value="matches">
+                        <UserSearch className="w-4 h-4 mr-2" />
+                        Matches
+                        {searchResults.length > 0 && (
+                          <Badge variant="secondary" className="ml-2">
+                            {searchResults.length}
+                          </Badge>
+                        )}
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="w-full">
+                      <Filter className="w-4 h-4 mr-2" />
+                      Sort By Time
+                    </Button>
+                    <Button variant="outline" size="sm" className="w-full">
+                      <MapPin className="w-4 h-4 mr-2" />
+                      Sort By Location
+                    </Button>
+                  </div>
                 </CardHeader>
-
                 <CardContent className="p-0">
                   <TabsContent value="all" className="m-0">
-                    <ScrollArea className="h-[calc(100vh-12rem)] px-6">
+                    <ScrollArea className="h-[calc(100vh-16rem)] px-6">
                       <div className="space-y-4 pb-6">
                         {detections.map((person) => (
                           <PersonCard
@@ -186,9 +212,8 @@ export default function Dashboard() {
                       </div>
                     </ScrollArea>
                   </TabsContent>
-
                   <TabsContent value="matches" className="m-0">
-                    <ScrollArea className="h-[calc(100vh-12rem)] px-6">
+                    <ScrollArea className="h-[calc(100vh-16rem)] px-6">
                       <div className="space-y-4 pb-6">
                         {searchResults.length === 0 ? (
                           <div className="text-center text-muted-foreground p-4">
@@ -211,10 +236,8 @@ export default function Dashboard() {
               </Tabs>
             </Card>
           </div>
-
-          {/* Center - Map */}
           <div className="col-span-6">
-            <Card className="h-[calc(100vh-7rem)]">
+            <Card className="h-[calc(100vh-10rem)]">
               <InteractiveMap
                 center={[-74.006, 40.7128]}
                 zoom={14}
@@ -223,10 +246,8 @@ export default function Dashboard() {
               />
             </Card>
           </div>
-
-          {/* Right Panel - AI Assistant */}
           <div className="col-span-3">
-            <Card className="h-[calc(100vh-7rem)] flex flex-col">
+            <Card className="h-[calc(100vh-10rem)] flex flex-col">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
@@ -235,9 +256,7 @@ export default function Dashboard() {
                   </CardTitle>
                 </div>
               </CardHeader>
-
               <CardContent className="flex-1 flex flex-col space-y-4 overflow-hidden">
-                {/* Chat Messages */}
                 <div ref={scrollAreaRef} className="flex-1 overflow-y-auto pr-4">
                   <div className="space-y-4">
                     {chatMessages.map((message, index) => (
@@ -265,8 +284,6 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </div>
-
-                {/* Input Area */}
                 <div className="flex items-center gap-2 pt-4">
                   <Input
                     className="flex-1"
@@ -289,8 +306,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      {/* Camera View Dialog */}
       <Dialog open={!!selectedPin} onOpenChange={() => setSelectedPin(null)}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
@@ -321,8 +336,6 @@ export default function Dashboard() {
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Person Details Dialog */}
       <Dialog open={!!selectedPerson} onOpenChange={() => setSelectedPerson(null)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
