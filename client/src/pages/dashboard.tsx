@@ -6,9 +6,9 @@ import { VideoPlayer } from "@/components/video-player";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Mic, Send, Camera, Bell, UserSearch, Phone, PhoneOff } from "lucide-react";
+import { Mic, Camera, Bell, UserSearch, Phone, PhoneOff, MapPin } from "lucide-react";
 import { mockPins, mockDetections, personImages } from "@/lib/mockData";
-import type { DetectedPerson, MapPin, SearchFilter } from "@shared/types";
+import type { DetectedPerson, MapPin as MapPinType, SearchFilter } from "@shared/types";
 import {
   Dialog,
   DialogContent,
@@ -17,16 +17,15 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 
 export default function Dashboard() {
   const [selectedPerson, setSelectedPerson] = useState<DetectedPerson | null>(null);
-  const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
+  const [selectedPin, setSelectedPin] = useState<MapPinType | null>(null);
   const [detections, setDetections] = useState(mockDetections);
   const [searchResults, setSearchResults] = useState<DetectedPerson[]>([]);
   const [isCallActive, setIsCallActive] = useState(false);
   const [transcription, setTranscription] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearch = (filters: SearchFilter[]) => {
     const results = mockDetections.filter(person =>
@@ -36,7 +35,7 @@ export default function Dashboard() {
   };
 
   const handlePersonsDetected = (persons: DetectedPerson[]) => {
-    setDetections(persons);
+    setDetections(prev => [...persons]);
   };
 
   const toggleCall = () => {
@@ -54,58 +53,69 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-4">
-        <div className="grid grid-cols-12 gap-4">
+      <div className="container mx-auto p-6">
+        <div className="grid grid-cols-12 gap-6">
           {/* Left Panel - Detections & Alerts */}
-          <div className="col-span-3">
-            <Tabs defaultValue="detections" className="h-full">
-              <TabsList className="w-full">
-                <TabsTrigger value="detections" className="flex-1">
-                  <Camera className="w-4 h-4 mr-2" />
-                  Detections
-                </TabsTrigger>
-                <TabsTrigger value="alerts" className="flex-1">
-                  <Bell className="w-4 h-4 mr-2" />
-                  Alerts
-                </TabsTrigger>
-              </TabsList>
+          <div className="col-span-3 space-y-6">
+            <Card className="h-[calc(100vh-7rem)]">
+              <Tabs defaultValue="detections" className="h-full">
+                <CardHeader>
+                  <TabsList className="w-full">
+                    <TabsTrigger value="detections" className="flex-1">
+                      <Camera className="w-4 h-4 mr-2" />
+                      Detections
+                    </TabsTrigger>
+                    <TabsTrigger value="alerts" className="flex-1">
+                      <Bell className="w-4 h-4 mr-2" />
+                      Alerts
+                    </TabsTrigger>
+                  </TabsList>
+                </CardHeader>
 
-              <TabsContent value="detections" className="mt-4 h-[calc(100vh-12rem)]">
-                <ScrollArea className="h-full pr-4">
-                  <div className="space-y-4">
-                    {detections.map((person) => (
-                      <PersonCard
-                        key={person.id}
-                        person={person}
-                        onClick={() => setSelectedPerson(person)}
-                      />
-                    ))}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
+                <CardContent className="p-0">
+                  <TabsContent value="detections" className="m-0">
+                    <ScrollArea className="h-[calc(100vh-12rem)] px-6">
+                      <div className="space-y-4 pb-6">
+                        {detections.map((person) => (
+                          <PersonCard
+                            key={person.id}
+                            person={person}
+                            onClick={() => setSelectedPerson(person)}
+                          />
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
 
-              <TabsContent value="alerts" className="mt-4">
-                <AlertsPanel />
-              </TabsContent>
-            </Tabs>
+                  <TabsContent value="alerts" className="m-0 px-6">
+                    <AlertsPanel />
+                  </TabsContent>
+                </CardContent>
+              </Tabs>
+            </Card>
           </div>
 
           {/* Center - Map */}
           <div className="col-span-6">
-            <InteractiveMap
-              center={[-74.006, 40.7128]}
-              zoom={14}
-              pins={mockPins}
-              onPinClick={setSelectedPin}
-            />
+            <Card className="h-[calc(100vh-7rem)]">
+              <InteractiveMap
+                center={[-74.006, 40.7128]}
+                zoom={14}
+                pins={mockPins}
+                onPinClick={setSelectedPin}
+              />
+            </Card>
           </div>
 
           {/* Right Panel - Search & Call Transcription */}
           <div className="col-span-3">
-            <Card className="h-full">
-              <CardHeader>
+            <Card className="h-[calc(100vh-7rem)]">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle>Search & Communication</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserSearch className="w-5 h-5" />
+                    Search & Communication
+                  </CardTitle>
                   <Button
                     size="icon"
                     variant={isCallActive ? "destructive" : "outline"}
@@ -119,38 +129,56 @@ export default function Dashboard() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+
+              <CardContent className="space-y-6">
                 {/* Search Section */}
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <SearchFilters onSearch={handleSearch} />
-                  <ScrollArea className="h-[200px] border rounded-md p-2">
-                    <div className="space-y-2">
-                      {searchResults.map((person) => (
-                        <PersonCard
-                          key={person.id}
-                          person={person}
-                          onClick={() => setSelectedPerson(person)}
-                        />
-                      ))}
+                  <ScrollArea className="h-[200px] border rounded-lg">
+                    <div className="p-4 space-y-4">
+                      {searchResults.length === 0 ? (
+                        <div className="text-center text-muted-foreground">
+                          No search results
+                        </div>
+                      ) : (
+                        searchResults.map((person) => (
+                          <PersonCard
+                            key={person.id}
+                            person={person}
+                            onClick={() => setSelectedPerson(person)}
+                          />
+                        ))
+                      )}
                     </div>
                   </ScrollArea>
                 </div>
 
+                <Separator />
+
                 {/* Call Transcription */}
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium">Live Call Transcript</h3>
+                    <h3 className="text-sm font-medium flex items-center gap-2">
+                      <Mic className="w-4 h-4" />
+                      Live Call Transcript
+                    </h3>
                     {isCallActive && (
                       <Badge variant="secondary" className="animate-pulse">
                         Live
                       </Badge>
                     )}
                   </div>
-                  <ScrollArea className="h-[200px] border rounded-md p-2">
-                    <div className="space-y-2">
-                      {transcription.map((line, i) => (
-                        <p key={i} className="text-sm">{line}</p>
-                      ))}
+                  <ScrollArea className="h-[calc(100vh-36rem)] border rounded-lg">
+                    <div className="p-4 space-y-3">
+                      {transcription.length === 0 ? (
+                        <div className="text-center text-muted-foreground">
+                          {isCallActive ? "Listening..." : "No active call"}
+                        </div>
+                      ) : (
+                        transcription.map((line, i) => (
+                          <p key={i} className="text-sm">{line}</p>
+                        ))
+                      )}
                       {isCallActive && (
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Mic className="h-4 w-4 animate-pulse" />
@@ -170,7 +198,10 @@ export default function Dashboard() {
       <Dialog open={!!selectedPin} onOpenChange={() => setSelectedPin(null)}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Camera Feed - {selectedPin?.location}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              Camera Feed - {selectedPin?.location}
+            </DialogTitle>
           </DialogHeader>
           {selectedPin && (
             <div className="space-y-4">
@@ -199,6 +230,7 @@ export default function Dashboard() {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
+              <UserSearch className="w-5 h-5" />
               Person Details
               <Badge variant={selectedPerson?.confidence && selectedPerson.confidence > 0.8 ? "default" : "secondary"}>
                 {selectedPerson?.confidence && Math.round(selectedPerson.confidence * 100)}% Match

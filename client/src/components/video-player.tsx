@@ -49,13 +49,47 @@ export function VideoPlayer({
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          console.error('Error from analyze-frame endpoint:', error);
-          return;
+          throw new Error('Failed to analyze frame');
         }
 
         const analysis = await response.json();
         console.log('Image analysis result:', analysis);
+
+        if (showDetections && analysis.detections) {
+          // Draw detection boxes
+          analysis.detections.forEach((detection: any) => {
+            const [x, y, width, height] = detection.bbox || [0, 0, 0, 0];
+            const confidence = detection.confidence || 0;
+
+            // Draw semi-transparent background
+            ctx.fillStyle = `rgba(59, 130, 246, ${confidence * 0.2})`;
+            ctx.fillRect(
+              x * canvas.width,
+              y * canvas.height,
+              width * canvas.width,
+              height * canvas.height
+            );
+
+            // Draw box
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+              x * canvas.width,
+              y * canvas.height,
+              width * canvas.width,
+              height * canvas.height
+            );
+
+            // Show confidence and description
+            ctx.fillStyle = "white";
+            ctx.font = "16px Arial";
+            ctx.fillText(
+              `${Math.round(confidence * 100)}% - ${detection.description}`,
+              x * canvas.width,
+              y * canvas.height - 5
+            );
+          });
+        }
 
         // Send the analyzed persons data to parent component
         if (onPersonsDetected && analysis.detections) {
@@ -64,7 +98,15 @@ export function VideoPlayer({
             time: new Date().toLocaleString(),
             description: detection.description,
             confidence: detection.confidence,
-            details: detection.details
+            thumbnail: img.src,
+            bbox: detection.bbox || [0, 0, 0, 0],
+            details: detection.details || {
+              age: "Unknown",
+              clothing: "Not specified",
+              environment: "Not specified",
+              movement: "Not specified",
+              distinctive_features: []
+            }
           }));
           onPersonsDetected(detectedPersons);
         }
