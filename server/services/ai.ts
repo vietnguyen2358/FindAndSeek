@@ -158,7 +158,7 @@ async function analyzePersonWithGPT4(imageUrl: string, bbox: [number, number, nu
       messages: [
         {
           role: "system",
-          content: `Analyze this cropped image of a person and provide a detailed description in JSON format:
+          content: `Analyze this cropped image of a person and provide detailed information in the following JSON format:
           {
             "description": "Brief one-line description",
             "details": {
@@ -175,7 +175,7 @@ async function analyzePersonWithGPT4(imageUrl: string, bbox: [number, number, nu
           content: [
             {
               type: "image_url",
-              image_url: { url: imageUrl }
+              image_url: { url: croppedImage }
             }
           ]
         }
