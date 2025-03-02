@@ -75,11 +75,11 @@ export default function Dashboard() {
       if (aiResponse.matches?.length > 0) {
         setSearchResults(aiResponse.matches);
 
-        const bestMatch = aiResponse.matches.reduce((prev: any, current: any) => 
+        const bestMatch = aiResponse.matches.reduce((prev: any, current: any) =>
           (current.matchScore || 0) > (prev.matchScore || 0) ? current : prev
         );
 
-        const cameraPin = mockPins.find(pin => 
+        const cameraPin = mockPins.find(pin =>
           pin.type === "camera" && pin.id === bestMatch.cameraId
         );
 
@@ -89,21 +89,21 @@ export default function Dashboard() {
           setMapZoom(16);
         }
 
-        setChatMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: `I've analyzed your description and found some potential matches. Let me show you the best match, located at ${cameraPin?.location || 'a camera location'}.\n\n${aiResponse.analysis.join('\n')}\n\nI'll continue monitoring all camera feeds for additional matches.`,
-            timestamp: new Date().toLocaleString()
-          }
-        ]);
+        // Split the analysis into multiple messages for better readability
+        const analysisMessages = aiResponse.analysis.filter(msg => msg.trim()).map(content => ({
+          role: 'assistant' as const,
+          content,
+          timestamp: new Date().toLocaleString()
+        }));
+
+        setChatMessages(prev => [...prev, ...analysisMessages]);
       } else {
         setSearchResults([]);
         setChatMessages(prev => [
           ...prev,
           {
             role: 'assistant',
-            content: "I've analyzed your description, but I haven't found any matches in our current camera feeds yet. I'll keep monitoring all locations and alert you as soon as I detect a potential match. Could you provide any additional details that might help with the search?",
+            content: aiResponse.analysis[0] || "I'll keep monitoring all camera feeds for potential matches. Please provide any additional details that might help with the search.",
             timestamp: new Date().toLocaleString()
           }
         ]);
@@ -114,7 +114,7 @@ export default function Dashboard() {
         ...prev,
         {
           role: 'assistant',
-          content: 'I apologize, but I encountered an error while processing your request. Please try again, and feel free to provide more details to help with the search.',
+          content: 'I encountered an error while processing your request. Please try again with your search details.',
           timestamp: new Date().toLocaleString()
         }
       ]);
