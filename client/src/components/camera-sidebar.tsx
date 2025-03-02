@@ -5,7 +5,7 @@ import { cameraFeeds } from "@/lib/mockData";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface CameraSidebarProps {
   pin: MapPin;
@@ -14,22 +14,34 @@ interface CameraSidebarProps {
 }
 
 export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) {
-  const videoRef = useRef<HTMLImageElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
-    // Force image reload every few seconds to keep MJPEG stream fresh
-    const interval = setInterval(() => {
-      if (videoRef.current) {
-        videoRef.current.src = `${cameraFeeds[pin.id as keyof typeof cameraFeeds]}?t=${Date.now()}`;
+    const refreshInterval = setInterval(() => {
+      if (imageRef.current) {
+        const cameraUrl = `https://webcams.nyctmc.org${cameraFeeds[pin.id as keyof typeof cameraFeeds]}?t=${Date.now()}`;
+        imageRef.current.src = cameraUrl;
       }
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => clearInterval(refreshInterval);
   }, [pin.id]);
 
+  const handleImageLoad = () => {
+    setIsLoading(false);
+    setHasError(false);
+  };
+
+  const handleImageError = () => {
+    setIsLoading(false);
+    setHasError(true);
+  };
+
   return (
-    <Card className="w-full h-[calc(100vh-10rem)] flex flex-col">
-      <CardHeader className="flex-none pb-3">
+    <Card className="h-[calc(100vh-10rem)] flex flex-col">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">
             {pin.location}
@@ -39,21 +51,31 @@ export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) 
           </Button>
         </div>
         <div className="text-sm text-muted-foreground">
-          Stream Status: Live
+          Stream Status: {isLoading ? "Loading..." : hasError ? "Error" : "Live"}
         </div>
       </CardHeader>
       <CardContent className="flex-1 space-y-4 p-4">
-        <div className="aspect-video bg-black rounded-lg overflow-hidden">
-          {cameraFeeds[pin.id as keyof typeof cameraFeeds] ? (
-            <img
-              ref={videoRef}
-              src={`${cameraFeeds[pin.id as keyof typeof cameraFeeds]}?t=${Date.now()}`}
-              className="w-full h-full object-cover"
-              alt={`Live feed from ${pin.location}`}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              Camera feed not available
+        <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
+          <img
+            ref={imageRef}
+            src={`https://webcams.nyctmc.org${cameraFeeds[pin.id as keyof typeof cameraFeeds]}?t=${Date.now()}`}
+            className={`w-full h-full object-cover transition-opacity duration-200 ${
+              isLoading ? 'opacity-0' : 'opacity-100'
+            }`}
+            alt={`Live feed from ${pin.location}`}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Badge variant="secondary" className="animate-pulse">
+                Loading feed...
+              </Badge>
+            </div>
+          )}
+          {hasError && (
+            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+              Unable to load camera feed
             </div>
           )}
         </div>

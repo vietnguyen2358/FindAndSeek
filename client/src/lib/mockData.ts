@@ -42,10 +42,10 @@ export const mockPins: MapPin[] = [
 
 // NYC DOT Traffic Camera feeds - using image URLs
 export const cameraFeeds = {
-  1: "https://webcams.nyctmc.org/api/cameras/9254a9b3-56dd-4498-94d9-4f2e60b1c090/image", // Times Square
-  2: "https://webcams.nyctmc.org/api/cameras/8724e8fa-9e04-4c35-8ac8-46c30531e78d/image", // 5 Ave @ 42 St
-  3: "https://webcams.nyctmc.org/api/cameras/4ac8d9c0-1fc9-4d87-96e2-f6fa6c6f185b/image", // Herald Square
-  4: "https://webcams.nyctmc.org/api/cameras/cd9bac28-0d41-4fb9-bf0d-6549f39c4724/image"  // Columbus Circle
+  1: "/api/cameras/9254a9b3-56dd-4498-94d9-4f2e60b1c090/image", // Times Square
+  2: "/api/cameras/8724e8fa-9e04-4c35-8ac8-46c30531e78d/image", // 5 Ave @ 42 St
+  3: "/api/cameras/4ac8d9c0-1fc9-4d87-96e2-f6fa6c6f185b/image", // Herald Square
+  4: "/api/cameras/cd9bac28-0d41-4fb9-bf0d-6549f39c4724/image"  // Columbus Circle
 };
 
 // Empty mock data for other features

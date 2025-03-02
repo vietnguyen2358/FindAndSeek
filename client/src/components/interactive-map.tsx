@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Card } from "@/components/ui/card";
@@ -33,14 +33,13 @@ export function InteractiveMap({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<{ [key: number]: mapboxgl.Marker }>({});
-  const [isMapReady, setIsMapReady] = useState(false);
 
-  // Initialize map once
+  // Initialize map
   useEffect(() => {
     if (!mapContainer.current) return;
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
-    const newMap = new mapboxgl.Map({
+    map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/dark-v11",
       center,
@@ -49,49 +48,41 @@ export function InteractiveMap({
       attributionControl: false,
     });
 
-    newMap.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
+    map.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
 
-    newMap.on('load', () => {
-      newMap.setPaintProperty('water', 'fill-color', '#1a1a1a');
-      newMap.setPaintProperty('building', 'fill-color', '#262626');
-      newMap.setPaintProperty('label-text', 'text-color', '#666666');
-      setIsMapReady(true);
+    map.current.on('load', () => {
+      if (map.current) {
+        map.current.setPaintProperty('water', 'fill-color', '#1a1a1a');
+        map.current.setPaintProperty('building', 'fill-color', '#262626');
+      }
     });
 
-    map.current = newMap;
-
     return () => {
+      // Clean up markers
       Object.values(markersRef.current).forEach(marker => marker.remove());
       markersRef.current = {};
+
+      // Remove map
       if (map.current) {
         map.current.remove();
         map.current = null;
       }
     };
-  }, []);
+  }, []); // Empty deps array as this should only run once
 
-  // Handle pins updates with memoization
+  // Handle pins updates
   useEffect(() => {
-    const currentMap = map.current;
-    if (!currentMap || !isMapReady) return;
+    if (!map.current) return;
 
-    // Remove stale markers first
-    const currentPinIds = new Set(pins.map(pin => pin.id));
-    Object.entries(markersRef.current).forEach(([id, marker]) => {
-      if (!currentPinIds.has(Number(id))) {
-        marker.remove();
-        delete markersRef.current[Number(id)];
-      }
-    });
-
-    // Update or add pins
     pins.forEach((pin) => {
       const isHighlighted = pin.id === highlightedPinId;
+
+      // Get existing marker or create new one
       let marker = markersRef.current[pin.id];
 
-      // Create marker element
+      // Create the marker element
       const el = document.createElement("div");
-      el.className = `w-3 h-3 rounded-full cursor-pointer relative transition-transform duration-300 ${
+      el.className = `w-3 h-3 rounded-full cursor-pointer relative transition-all duration-300 ${
         isHighlighted ? 'scale-150' : ''
       }`;
       el.style.backgroundColor = pin.type === "camera" ? "#ef4444" : "#3b82f6";
@@ -108,36 +99,48 @@ export function InteractiveMap({
         // Create new marker
         marker = new mapboxgl.Marker({
           element: el,
-          anchor: 'center',
+          anchor: 'center'
         })
           .setLngLat([pin.lng, pin.lat]);
 
         // Add click handler
         if (onPinClick) {
-          el.addEventListener("click", () => onPinClick(pin));
+          marker.getElement().addEventListener("click", () => onPinClick(pin));
         }
 
-        marker.addTo(currentMap);
+        marker.addTo(map.current!);
         markersRef.current[pin.id] = marker;
       } else {
-        // Update existing marker
+        // Just update the element and position
         marker.getElement().replaceWith(el);
         marker.setLngLat([pin.lng, pin.lat]);
+
+        // Re-add click handler
+        if (onPinClick) {
+          el.addEventListener("click", () => onPinClick(pin));
+        }
       }
     });
-  }, [pins, highlightedPinId, onPinClick, isMapReady]);
+
+    // Remove any markers that are no longer in the pins array
+    Object.entries(markersRef.current).forEach(([id, marker]) => {
+      if (!pins.find(p => p.id === Number(id))) {
+        marker.remove();
+        delete markersRef.current[Number(id)];
+      }
+    });
+  }, [pins, highlightedPinId, onPinClick]);
 
   // Handle center and zoom changes
   useEffect(() => {
-    if (!map.current || !isMapReady) return;
+    if (!map.current) return;
 
     map.current.flyTo({
       center,
       zoom,
       duration: 1000,
-      essential: true,
     });
-  }, [center, zoom, isMapReady]);
+  }, [center, zoom]);
 
   return (
     <Card className="w-full h-[calc(100vh-10rem)] overflow-hidden border-border bg-background relative">
