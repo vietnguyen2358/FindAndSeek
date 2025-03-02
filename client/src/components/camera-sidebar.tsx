@@ -18,24 +18,29 @@ export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) 
       <CardHeader className="flex-none pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">
-            {pin.location} Camera
+            {pin.location}
           </CardTitle>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </div>
         <div className="text-sm text-muted-foreground">
-          Last Updated: {new Date(pin.timestamp).toLocaleString()}
+          Last Updated: {new Date(pin.timestamp || '').toLocaleString()}
         </div>
       </CardHeader>
       <CardContent className="flex-1 space-y-4 p-4">
         <div className="aspect-video bg-black rounded-lg overflow-hidden">
-          <iframe
-            src={cameraFeeds[pin.id]}
-            className="w-full h-full"
-            allow="autoplay; fullscreen"
-            allowFullScreen
-          />
+          {cameraFeeds[pin.id] ? (
+            <img
+              src={cameraFeeds[pin.id]}
+              className="w-full h-full object-cover"
+              alt={`Live feed from ${pin.location}`}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+              Camera feed not available
+            </div>
+          )}
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
