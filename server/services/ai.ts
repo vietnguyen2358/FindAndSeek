@@ -7,6 +7,54 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Function to convert URL to base64
+async function imageUrlToBase64(imageUrl: string): Promise<string> {
+  const response = await fetch(imageUrl);
+  const buffer = await response.buffer();
+  return buffer.toString('base64');
+}
+
+// Helper function to crop an image based on bounding box
+async function cropImageFromUrl(imageUrl: string, bbox: [number, number, number, number]): Promise<string> {
+  try {
+    // Download the image
+    console.log('Downloading image for cropping:', imageUrl);
+    const response = await fetch(imageUrl);
+    const imageBuffer = await response.buffer();
+
+    // Get image dimensions
+    const metadata = await sharp(imageBuffer).metadata();
+    const width = metadata.width || 0;
+    const height = metadata.height || 0;
+
+    // Calculate crop dimensions
+    const [x, y, w, h] = bbox;
+    const cropX = Math.floor(x * width);
+    const cropY = Math.floor(y * height);
+    const cropWidth = Math.floor(w * width);
+    const cropHeight = Math.floor(h * height);
+
+    console.log('Cropping image with dimensions:', { cropX, cropY, cropWidth, cropHeight });
+
+    // Crop the image
+    const croppedBuffer = await sharp(imageBuffer)
+      .extract({
+        left: cropX,
+        top: cropY,
+        width: cropWidth,
+        height: cropHeight
+      })
+      .jpeg()
+      .toBuffer();
+
+    // Convert to base64
+    return `data:image/jpeg;base64,${croppedBuffer.toString('base64')}`;
+  } catch (error) {
+    console.error("Error cropping image:", error);
+    return imageUrl;
+  }
+}
+
 interface AnalysisResult {
   entities: string[];
   locations: string[];
@@ -37,42 +85,6 @@ interface ImageAnalysisResult {
   summary: string;
 }
 
-// Helper function to crop an image based on bounding box
-async function cropImageFromUrl(imageUrl: string, bbox: [number, number, number, number]): Promise<string> {
-  try {
-    // Download the image
-    const response = await fetch(imageUrl);
-    const imageBuffer = await response.buffer();
-
-    // Get image dimensions
-    const metadata = await sharp(imageBuffer).metadata();
-    const width = metadata.width || 0;
-    const height = metadata.height || 0;
-
-    // Calculate crop dimensions
-    const [x, y, w, h] = bbox;
-    const cropX = Math.floor(x * width);
-    const cropY = Math.floor(y * height);
-    const cropWidth = Math.floor(w * width);
-    const cropHeight = Math.floor(h * height);
-
-    // Crop the image
-    const croppedBuffer = await sharp(imageBuffer)
-      .extract({
-        left: cropX,
-        top: cropY,
-        width: cropWidth,
-        height: cropHeight
-      })
-      .toBuffer();
-
-    // Convert to base64
-    return `data:image/jpeg;base64,${croppedBuffer.toString('base64')}`;
-  } catch (error) {
-    console.error("Error cropping image:", error);
-    return imageUrl;
-  }
-}
 
 // First stage: Detect people using Roboflow API
 async function detectPeopleWithRoboflow(imageUrl: string): Promise<{
@@ -80,7 +92,7 @@ async function detectPeopleWithRoboflow(imageUrl: string): Promise<{
   confidence: number;
 }[]> {
   try {
-    console.log('Starting Roboflow person detection...');
+    console.log('Starting Roboflow person detection for image:', imageUrl);
 
     const response = await fetch('https://detect.roboflow.com/infer/workflows/mizantech-bww5d/detect-count-and-visualize', {
       method: 'POST',
@@ -96,7 +108,11 @@ async function detectPeopleWithRoboflow(imageUrl: string): Promise<{
     });
 
     const result = await response.json();
-    console.log('Roboflow API response:', result);
+    console.log('Roboflow API response:', JSON.stringify(result, null, 2));
+
+    if (!response.ok) {
+      throw new Error(`Roboflow API error: ${JSON.stringify(result)}`);
+    }
 
     // Extract and normalize person detections
     const detections = (result.predictions || [])
@@ -142,7 +158,7 @@ async function analyzePersonWithGPT4(imageUrl: string, bbox: [number, number, nu
       messages: [
         {
           role: "system",
-          content: `Analyze this cropped image of a person and provide detailed information in the following JSON format:
+          content: `Analyze this cropped image of a person and provide a detailed description in JSON format:
           {
             "description": "Brief one-line description",
             "details": {
@@ -159,7 +175,7 @@ async function analyzePersonWithGPT4(imageUrl: string, bbox: [number, number, nu
           content: [
             {
               type: "image_url",
-              image_url: { url: croppedImage }
+              image_url: { url: imageUrl }
             }
           ]
         }
@@ -169,7 +185,8 @@ async function analyzePersonWithGPT4(imageUrl: string, bbox: [number, number, nu
     });
 
     const analysis = JSON.parse(response.choices[0].message.content || "{}");
-    console.log('GPT-4 Vision analysis complete');
+    console.log('GPT-4 Vision analysis complete:', analysis);
+
     return {
       ...analysis,
       croppedImage
@@ -317,7 +334,7 @@ export async function matchSearchTerms(searchQuery: string, detections: ImageAna
 
     // Get embeddings for each detection's description
     const detectionPromises = detections.map(async (d) => {
-      const descriptions = d.detections.map(det => 
+      const descriptions = d.detections.map(det =>
         `${det.description} ${det.details.clothing} ${det.details.distinctive_features.join(" ")}`
       );
       return Promise.all(descriptions.map(desc => getEmbeddings(desc)));
