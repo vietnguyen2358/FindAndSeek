@@ -14,19 +14,24 @@ const openai = new OpenAI({
 // Helper function to get similarity score between search criteria and a detection
 async function getSimilarityScore(query: string, detection: DetectedPerson): Promise<number> {
   try {
+    const detectionInfo = {
+      description: detection.description,
+      clothing: detection.details.clothing,
+      features: detection.details.distinctive_features,
+      location: detection.details.environment
+    };
+
     const response = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview",
       messages: [
         {
           role: "system",
-          content: `You are a matcher for finding missing persons. Compare the search query with the detection and return a similarity score between 0 and 1 as a JSON number. Focus mainly on clothing and physical description matches.`
+          content: `Compare the search query with the detected person's details. Return a JSON number between 0 and 1 indicating how well they match based on clothing and physical description. Example: {"score": 0.85}`
         },
         {
           role: "user",
-          content: `Search: "${query}"
-Detection: ${detection.description}
-Clothing: ${detection.details.clothing}
-Features: ${detection.details.distinctive_features.join(", ")}`
+          content: `Search description: "${query}"
+Person detected: ${JSON.stringify(detectionInfo, null, 2)}`
         }
       ],
       response_format: { type: "json_object" }
@@ -220,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/parse-search", async (req, res) => {
     try {
-      console.log('Received search parsing request:', req.body);
+      console.log('Received search request:', req.body);
 
       const schema = z.object({
         query: z.string(),
@@ -229,36 +234,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { query, detections = [] } = schema.parse(req.body);
 
-      // First, get search analysis from ChatGPT
-      const response = await openai.chat.completions.create({
-        model: "gpt-4-turbo-preview",
-        messages: [
-          {
-            role: "system",
-            content: `Extract key clothing and physical features from the search query. Return a JSON object:
-{
-  "filters": [
-    {"category": "clothing", "value": "specific clothing item"},
-    {"category": "physical", "value": "physical description"}
-  ],
-  "response": "Brief summary of what to look for - focus on clothing"
-}`
-          },
-          {
-            role: "user",
-            content: `Extract search information from: ${query}`
-          }
-        ],
-        response_format: { type: "json_object" }
-      });
-
-      if (!response.choices[0].message.content) {
-        throw new Error('No response content received from ChatGPT');
-      }
-
-      const searchAnalysis = JSON.parse(response.choices[0].message.content);
-
-      // If detections were provided, analyze them for matches
       if (detections.length > 0) {
         // Get similarity scores for each detection
         const scoredDetections = await Promise.all(
@@ -268,53 +243,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }))
         );
 
-        // Sort by score and get top 3
+        // Sort by score and get top matches
         const topMatches = scoredDetections
           .sort((a, b) => b.score - a.score)
           .slice(0, 3)
           .map(({ detection, score }) => ({
-            ...detection,
+            id: detection.id,
+            description: detection.description,
+            time: detection.time,
+            location: detection.details.environment,
+            details: detection.details,
+            thumbnail: detection.thumbnail,
             matchScore: score
           }));
 
-        // Get brief analysis of matches
-        const matchAnalysis = await openai.chat.completions.create({
+        // Get brief match analysis
+        const analysis = await openai.chat.completions.create({
           model: "gpt-4-turbo-preview",
           messages: [
             {
               role: "system",
-              content: "Provide a very brief explanation of the clothing matches. One short sentence per match."
+              content: "Provide very brief match explanations focusing on clothing and distinctive features. One line per match."
             },
             {
               role: "user",
               content: `Search: "${query}"
-Matches: ${topMatches.map((match, i) => 
-  `Match ${i + 1}: ${match.description}, wearing ${match.details.clothing}`
+Matches: ${topMatches.map(match => 
+  `${match.description} wearing ${match.details.clothing}`
 ).join('\n')}`
             }
           ]
         });
 
-        // Return combined results in a single response
         res.json({
-          ...searchAnalysis,
-          topMatches,
-          matchAnalysis: matchAnalysis.choices[0].message.content?.split('\n')
+          matches: topMatches,
+          analysis: analysis.choices[0].message.content?.split('\n')
         });
       } else {
-        res.json(searchAnalysis);
+        res.json({
+          matches: [],
+          analysis: ['No detections to analyze']
+        });
       }
 
     } catch (error: any) {
-      console.error("Error parsing search query:", error);
-      res.status(400).json({
+      console.error("Search error:", error);
+      res.status(400).json({ 
         error: error.message,
-        filters: [],
-        response: "Sorry, I couldn't process that search. Please try again.",
-        matchAnalysis: []
+        matches: [],
+        analysis: ['Error processing search']
       });
     }
   });
+
 
   const httpServer = createServer(app);
   return httpServer;

@@ -63,29 +63,24 @@ export default function Dashboard() {
       };
       setChatMessages(prev => [...prev, userMessage]);
 
-      // Process with ChatGPT, including current detections
+      // Process search with current detections
       const result = await apiRequest('/api/parse-search', {
         method: 'POST',
         body: JSON.stringify({
           query,
-          detections // Send current detections for analysis
+          detections
         })
       });
 
-      // Update search results with ranked matches if available
-      if (result.topMatches) {
-        setSearchResults(result.topMatches);
+      if (result.matches?.length > 0) {
+        setSearchResults(result.matches);
 
-        // Add a single concise message with match information
+        // Add concise match information
         setChatMessages(prev => [
           ...prev,
           {
             role: 'assistant',
-            content: `${result.response}\n\n${
-              result.matchAnalysis?.length > 0 
-                ? '🎯 Potential matches found:\n' + result.matchAnalysis.join('\n')
-                : 'No close matches found yet.'
-            }`,
+            content: result.analysis.join('\n'),
             timestamp: new Date().toLocaleString()
           }
         ]);
@@ -95,12 +90,11 @@ export default function Dashboard() {
           ...prev,
           {
             role: 'assistant',
-            content: result.response,
+            content: 'No matches found yet. I\'ll keep looking.',
             timestamp: new Date().toLocaleString()
           }
         ]);
       }
-
 
     } catch (error) {
       console.error('Error processing search:', error);
@@ -108,7 +102,7 @@ export default function Dashboard() {
         ...prev,
         {
           role: 'assistant',
-          content: 'Sorry, I encountered an error processing your search. Please try again.',
+          content: 'Sorry, I encountered an error. Please try again.',
           timestamp: new Date().toLocaleString()
         }
       ]);
@@ -335,9 +329,7 @@ export default function Dashboard() {
             <DialogTitle className="flex items-center gap-2">
               <UserSearch className="w-5 h-5" />
               Person Details
-              <Badge variant={selectedPerson?.confidence && selectedPerson.confidence > 0.8 ? "default" : "secondary"}>
-                {selectedPerson?.confidence && Math.round(selectedPerson.confidence * 100)}% Match
-              </Badge>
+              {/* Confidence percentage removed */}
             </DialogTitle>
           </DialogHeader>
           {selectedPerson && (
