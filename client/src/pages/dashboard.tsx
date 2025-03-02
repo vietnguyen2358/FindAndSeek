@@ -10,6 +10,7 @@ import { VoiceInput } from "@/components/voice-input";
 import { CallButton } from "@/components/call-button";
 import { mockPins } from "@/lib/mockData";
 import { CameraSidebar } from "@/components/camera-sidebar";
+import { apiRequest } from "@/lib/queryClient";
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -22,7 +23,7 @@ export default function Dashboard() {
   const [selectedPerson, setSelectedPerson] = useState<DetectedPerson | null>(null);
   const [selectedPin, setSelectedPin] = useState<MapPinType | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([-73.9877, 40.7502]); // Herald Square
-  const [mapZoom, setMapZoom] = useState(16);
+  const [mapZoom, setMapZoom] = useState(14);
   const [detections, setDetections] = useState<DetectedPerson[]>([]);
   const [searchResults, setSearchResults] = useState<DetectedPerson[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -74,11 +75,28 @@ export default function Dashboard() {
 
       if (result.matches?.length > 0) {
         setSearchResults(result.matches);
+
+        // Find the highest scoring match
+        const bestMatch = result.matches.reduce((prev: any, current: any) => 
+          (current.matchScore || 0) > (prev.matchScore || 0) ? current : prev
+        );
+
+        // Find corresponding camera pin and center map
+        const cameraPin = mockPins.find(pin => 
+          pin.type === "camera" && pin.id === bestMatch.cameraId
+        );
+
+        if (cameraPin) {
+          setHighlightedPinId(cameraPin.id);
+          setMapCenter([cameraPin.lng, cameraPin.lat]);
+          setMapZoom(16);
+        }
+
         setChatMessages(prev => [
           ...prev,
           {
             role: 'assistant',
-            content: result.analysis.join('\n'),
+            content: `Found matches! Centering on best match at ${cameraPin?.location || 'location'}.\n\n${result.analysis.join('\n')}`,
             timestamp: new Date().toLocaleString()
           }
         ]);

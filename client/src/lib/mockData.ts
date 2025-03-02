@@ -37,15 +37,6 @@ export const mockPins: MapPin[] = [
     timestamp: new Date().toISOString(),
     location: "Empire State Building",
     detectionCount: 0
-  },
-  {
-    id: 5,
-    lat: 40.7829, // Central Park
-    lng: -73.9654,
-    type: "camera",
-    timestamp: new Date().toISOString(),
-    location: "Central Park",
-    detectionCount: 0
   }
 ];
 
@@ -54,8 +45,7 @@ export const cameraFeeds = {
   1: "https://www.earthcam.com/usa/newyork/heraldsquare/?cam=heraldsquare_nyc",
   2: "",
   3: "",
-  4: "",
-  5: ""
+  4: ""
 };
 
 // Empty mock data for other features
