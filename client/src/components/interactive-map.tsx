@@ -3,7 +3,6 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Card } from "@/components/ui/card";
 
-// Update with the provided token
 const MAPBOX_TOKEN = "pk.eyJ1Ijoidm5nMjM1OCIsImEiOiJjbTdwc3lraXQwcWVxMnJwdWZtZGkxdTY4In0.Ow6z_5cDo3XcRtiT_ZCMgA";
 
 interface MapPin {
@@ -40,7 +39,7 @@ export function InteractiveMap({
     if (!mapContainer.current) return;
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
-    map.current = new mapboxgl.Map({
+    const newMap = new mapboxgl.Map({
       container: mapContainer.current,
       style: "mapbox://styles/mapbox/dark-v11",
       center,
@@ -49,32 +48,35 @@ export function InteractiveMap({
       attributionControl: false
     });
 
-    map.current.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
+    newMap.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
 
     // Add custom styles for labels and roads
-    map.current.on('load', () => {
-      if (!map.current) return;
-
+    newMap.on('load', () => {
       // Make water darker
-      map.current.setPaintProperty('water', 'fill-color', '#1a1a1a');
+      newMap.setPaintProperty('water', 'fill-color', '#1a1a1a');
 
       // Make buildings darker
-      map.current.setPaintProperty('building', 'fill-color', '#262626');
+      newMap.setPaintProperty('building', 'fill-color', '#262626');
 
       // Adjust text colors
-      map.current.setPaintProperty('label-text', 'text-color', '#666666');
+      newMap.setPaintProperty('label-text', 'text-color', '#666666');
     });
+
+    map.current = newMap;
 
     return () => {
       // Clean up markers before removing map
       Object.values(markersRef.current).forEach(marker => marker.remove());
-      map.current?.remove();
+      if (map.current) {
+        map.current.remove();
+      }
     };
   }, []);
 
   // Handle pins updates
   useEffect(() => {
-    if (!map.current) return;
+    const currentMap = map.current;
+    if (!currentMap) return;
 
     // Track existing pins to remove stale ones
     const currentPinIds = new Set(pins.map(pin => pin.id));
@@ -106,7 +108,7 @@ export function InteractiveMap({
       pulse.style.animationDuration = isHighlighted ? "1s" : "2s";
       el.appendChild(pulse);
 
-      // Create or update popup content
+      // Create popup content
       const popupContent = `
         <div class="p-2 text-xs">
           <strong>${pin.type === "camera" ? "Camera Location" : "Last Seen"}</strong>
@@ -122,26 +124,36 @@ export function InteractiveMap({
         // Create new marker
         marker = new mapboxgl.Marker({
           element: el,
-          anchor: 'center'
+          anchor: 'center',
+          offset: [0, 0]
         })
           .setLngLat([pin.lng, pin.lat])
           .setPopup(
-            new mapboxgl.Popup({ offset: 25, closeButton: false })
+            new mapboxgl.Popup({ 
+              offset: 25,
+              closeButton: false,
+              closeOnClick: false
+            })
               .setHTML(popupContent)
           );
 
-        marker.addTo(map.current);
-        markersRef.current[pin.id] = marker;
+        if (currentMap) {
+          marker.addTo(currentMap);
+          markersRef.current[pin.id] = marker;
 
-        // Add click handler
-        if (onPinClick) {
-          el.addEventListener("click", () => onPinClick(pin));
+          // Add click handler
+          if (onPinClick) {
+            el.addEventListener("click", () => onPinClick(pin));
+          }
         }
       } else {
         // Update existing marker
         marker.getElement().replaceWith(el);
         marker.setLngLat([pin.lng, pin.lat]);
-        marker.getPopup().setHTML(popupContent);
+        const popup = marker.getPopup();
+        if (popup) {
+          popup.setHTML(popupContent);
+        }
       }
     });
   }, [pins, highlightedPinId, onPinClick]);
@@ -152,15 +164,18 @@ export function InteractiveMap({
 
     // Smoothly animate to new center and zoom
     map.current.flyTo({
-      center: center,
-      zoom: zoom,
+      center,
+      zoom,
       duration: 2000,
-      essential: true
+      essential: true,
+      curve: 1.42,
+      speed: 1.2,
+      easing: (t) => t
     });
   }, [center, zoom]);
 
   return (
-    <Card className="w-full h-[600px] overflow-hidden border-border bg-background relative">
+    <Card className="w-full h-[calc(100vh-10rem)] overflow-hidden border-border bg-background relative">
       <div ref={mapContainer} className="w-full h-full" />
       {/* Map Legend */}
       <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur-sm p-3 rounded-lg border border-border">
