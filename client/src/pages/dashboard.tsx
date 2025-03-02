@@ -1,13 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { InteractiveMap } from "@/components/interactive-map";
-import { AlertsPanel } from "@/components/alerts-panel";
-import { VideoPlayer } from "@/components/video-player";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Camera, UserSearch, MapPin, Send, Bell, Filter, History } from "lucide-react";
 import { mockPins, mockDetections } from "@/lib/mockData";
-import type { DetectedPerson, MapPin as MapPinType, SearchFilter } from "@shared/types";
+import type { DetectedPerson, MapPin as MapPinType } from "@shared/types";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -19,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
 import { PersonCard } from "@/components/person-card";
-import { CallButton } from "@/components/call-button";
+import { VoiceInput } from "@/components/voice-input";
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -138,23 +136,20 @@ export default function Dashboard() {
     }
   };
 
-  const handleCallResponse = (transcription: string) => {
-    // Add user's transcribed message
+  const handleVoiceTranscription = (text: string) => {
     setChatMessages(prev => [...prev, {
       role: 'user',
-      content: transcription,
+      content: text,
       timestamp: new Date().toLocaleString()
     }]);
 
-    // Add system message indicating processing
     setChatMessages(prev => [...prev, {
       role: 'system',
       content: '🎙️ Processing your voice message...',
       timestamp: new Date().toLocaleString()
     }]);
 
-    // Process the transcription as a search query
-    handleSearch(transcription);
+    handleSearch(text);
   };
 
   return (
@@ -167,7 +162,6 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold">Find & Seek</h1>
             </div>
             <div className="flex items-center gap-2">
-              <CallButton onTranscription={handleCallResponse} />
               <Button variant="outline" size="sm">
                 <History className="w-4 h-4 mr-2" />
                 Search History
@@ -312,6 +306,10 @@ export default function Dashboard() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
+                    disabled={isProcessing}
+                  />
+                  <VoiceInput
+                    onTranscription={handleVoiceTranscription}
                     disabled={isProcessing}
                   />
                   <Button

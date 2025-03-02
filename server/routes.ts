@@ -3,8 +3,10 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertCaseSchema, insertCameraFootageSchema } from "@shared/schema";
 import { z } from "zod";
-import type { SearchFilter, DetectedPerson } from "@shared/types";
+import type { SearchFilter, DetectedPerson, SearchCriteria } from "@shared/types";
 import OpenAI from "openai";
+import { findSimilarDetections, analyzeClothingDescription } from "./services/similarity-search";
+import fetch from "node-fetch";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -297,87 +299,65 @@ Matches: ${topMatches.map(match =>
   });
 
 
+  // New route for audio transcription
+  app.post("/api/transcribe", async (req, res) => {
+    try {
+      const audioBuffer = req.body;
+
+      // Use Whisper for transcription
+      const transcription = await openai.audio.transcriptions.create({
+        file: audioBuffer,
+        model: "whisper-1",
+      });
+
+      // Process with Groq AI
+      const response = await fetch('https://api.groq.com/v1/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: "mixtral-8x7b-32768",
+          messages: [
+            {
+              role: "system",
+              content: `You are helping to find missing persons. Extract key details from the voice description to search for matches. 
+              Focus on:
+              - Clothing description
+              - Physical characteristics
+              - Last known location
+              - Time last seen
+              - Any distinctive features
+
+              Format your response in a clear, conversational way, highlighting the most important details for search.`
+            },
+            {
+              role: "user",
+              content: transcription.text
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 150
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Groq API error: ${response.statusText}`);
+      }
+
+      const groqResponse = await response.json() as { choices: Array<{ message: { content: string } }> };
+      const processedDescription = groqResponse.choices[0].message.content;
+
+      res.json({ text: processedDescription });
+    } catch (error) {
+      console.error('Transcription error:', error);
+      res.status(500).json({ error: 'Failed to process audio' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
 
-import { Router } from "express";
-import { z } from "zod";
-import { findSimilarDetections, analyzeClothingDescription } from "./services/similarity-search";
-import type { SearchCriteria } from "@shared/types";
-import OpenAI from "openai";
-import { handleIncomingCall, processTranscription, initiateCall } from './services/call-service';
-
-const openai2 = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-const router = Router();
-
-router.post("/api/call/incoming", handleIncomingCall);
-router.post("/api/call/process-transcription", processTranscription);
-router.post("/api/call/initiate", async (req, res) => {
-  try {
-    const { phoneNumber, message } = req.body;
-    await initiateCall(phoneNumber, message);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to initiate call" });
-  }
-});
-
-router.post("/api/search", async (req, res) => {
-  try {
-    const schema = z.object({
-      description: z.string(),
-      timeRange: z.object({
-        start: z.string(),
-        end: z.string()
-      }).optional(),
-      location: z.string().optional()
-    });
-
-    const criteria: SearchCriteria = schema.parse(req.body);
-
-    // First, analyze the clothing description
-    const enhancedDescription = await analyzeClothingDescription(criteria.description);
-    criteria.description = enhancedDescription;
-
-    // Perform similarity search
-    const matches = await findSimilarDetections(criteria);
-
-    // Get ChatGPT to explain the matches
-    const analysis = await openai2.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [
-        {
-          role: "system",
-          content: "Analyze why these detections match the search criteria. Focus on clothing matches and any distinctive features."
-        },
-        {
-          role: "user",
-          content: `Search criteria: "${criteria.description}"
-Matches found:
-${matches.map((match, i) => `
-Match ${i + 1} (${Math.round(match.similarity * 100)}% similar):
-- Location: ${match.detection.detectionLocation}
-- Description: ${match.detection.description}
-- Clothing: ${match.detection.clothingDescription}
-`).join('\n')}`
-        }
-      ]
-    });
-
-    res.json({
-      matches,
-      analysis: analysis.choices[0].message.content,
-      enhancedDescription
-    });
-
-  } catch (error) {
-    console.error("Search error:", error);
-    res.status(500).json({ error: "Failed to process search request" });
-  }
-});
-
-export default router;
+export {};
