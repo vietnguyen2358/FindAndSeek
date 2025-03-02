@@ -6,7 +6,7 @@ import { VideoPlayer } from "@/components/video-player";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Mic, Send, Camera, Bell } from "lucide-react";
 import { mockPins } from "@/lib/mockData";
 import type { DetectedPerson } from "@shared/types";
 import {
@@ -16,6 +16,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function Dashboard() {
   const [selectedCamera, setSelectedCamera] = useState<{
@@ -25,24 +28,91 @@ export default function Dashboard() {
   const [hideDetections, setHideDetections] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<DetectedPerson | null>(null);
   const [detectedPersons, setDetectedPersons] = useState<DetectedPerson[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [chatMessages, setChatMessages] = useState<Array<{
+    role: 'user' | 'system';
+    content: string;
+  }>>([]);
 
   const handlePersonsDetected = (persons: DetectedPerson[]) => {
     setDetectedPersons(persons);
   };
 
+  const handleSendMessage = () => {
+    if (!searchQuery.trim()) return;
+
+    setChatMessages([
+      ...chatMessages,
+      { role: 'user', content: searchQuery },
+      { role: 'system', content: 'Searching for matches...' }
+    ]);
+    setSearchQuery("");
+  };
+
+  const toggleRecording = () => {
+    setIsRecording(!isRecording);
+    // TODO: Implement voice recording
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Search Bar */}
-      <div className="border-b border-border">
-        <div className="container mx-auto py-4">
-          <SearchFilters onSearch={console.log} />
-        </div>
-      </div>
+      <div className="container mx-auto py-4">
+        <div className="grid grid-cols-12 gap-4">
+          {/* Left Panel - Camera Views & Alerts */}
+          <div className="col-span-3">
+            <Tabs defaultValue="cameras" className="w-full">
+              <TabsList className="w-full">
+                <TabsTrigger value="cameras" className="flex-1">
+                  <Camera className="w-4 h-4 mr-2" />
+                  Cameras
+                </TabsTrigger>
+                <TabsTrigger value="alerts" className="flex-1">
+                  <Bell className="w-4 h-4 mr-2" />
+                  Alerts
+                </TabsTrigger>
+              </TabsList>
 
-      <div className="container mx-auto py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Map and Camera Panel */}
-          <div className="lg:col-span-8 space-y-6">
+              <TabsContent value="cameras" className="mt-4">
+                {selectedCamera && (
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-lg font-medium">
+                        {selectedCamera.location}
+                      </CardTitle>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setHideDetections(!hideDetections)}
+                      >
+                        {hideDetections ? (
+                          <Eye className="h-4 w-4" />
+                        ) : (
+                          <EyeOff className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="aspect-video bg-black rounded-lg relative">
+                        <VideoPlayer
+                          showDetections={!hideDetections}
+                          onPersonsDetected={handlePersonsDetected}
+                          cameraId={selectedCamera.id}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="alerts" className="mt-4">
+                <AlertsPanel />
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Center - Map */}
+          <div className="col-span-6">
             <InteractiveMap
               center={[-74.006, 40.7128]}
               zoom={12}
@@ -51,111 +121,67 @@ export default function Dashboard() {
                 setSelectedCamera({ id: pin.id, location: pin.location })
               }
             />
-
-            {selectedCamera && (
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-xl font-semibold">
-                    Camera Feed
-                  </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setHideDetections(!hideDetections)}
-                  >
-                    {hideDetections ? (
-                      <Eye className="h-4 w-4" />
-                    ) : (
-                      <EyeOff className="h-4 w-4" />
-                    )}
-                    <span className="ml-2">
-                      {hideDetections ? "Show" : "Hide"} Detections
-                    </span>
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Live Feed</span>
-                      <span className="text-sm text-muted-foreground">
-                        Viewing {selectedCamera.location}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Camera Feed */}
-                  <div className="aspect-video bg-black rounded-lg relative">
-                    <VideoPlayer
-                      showDetections={!hideDetections}
-                      onPersonsDetected={handlePersonsDetected}
-                      cameraId={selectedCamera.id}
-                    />
-                  </div>
-
-                  {/* Detected Persons List */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium">Detected Persons</h3>
-                      <span className="text-sm text-muted-foreground">
-                        {detectedPersons.length} persons detected
-                      </span>
-                    </div>
-                    <ScrollArea className="h-[200px]">
-                      <div className="space-y-2">
-                        {detectedPersons.map((person) => (
-                          <Card
-                            key={person.id}
-                            className="cursor-pointer hover:bg-accent/50 transition-colors"
-                            onClick={() => setSelectedPerson(person)}
-                          >
-                            <CardContent className="p-3">
-                              <div className="flex items-start gap-3">
-                                {person.croppedImage ? (
-                                  <img
-                                    src={person.croppedImage}
-                                    alt={`Person ${person.id}`}
-                                    className="w-12 h-12 rounded flex-shrink-0 object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-12 h-12 rounded flex-shrink-0 bg-blue-500/20 border border-blue-500" />
-                                )}
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <p className="font-medium">Person {person.id}</p>
-                                    <span className="text-sm text-muted-foreground">
-                                      {person.time}
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {person.description}
-                                  </p>
-                                  <div className="mt-1 flex items-center gap-2">
-                                    <div className="h-1 flex-1 bg-muted rounded-full">
-                                      <div
-                                        className="h-full bg-blue-500 rounded-full"
-                                        style={{ width: `${person.confidence * 100}%` }}
-                                      />
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">
-                                      {Math.round(person.confidence * 100)}% match
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
-          {/* Alerts Panel */}
-          <div className="lg:col-span-4">
-            <AlertsPanel />
+          {/* Right Panel - Search & Chat */}
+          <div className="col-span-3">
+            <Card>
+              <CardHeader>
+                <CardTitle>Search & Communicate</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Voice Input */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={isRecording ? "destructive" : "outline"}
+                    size="icon"
+                    onClick={toggleRecording}
+                  >
+                    <Mic className={`h-4 w-4 ${isRecording ? 'animate-pulse' : ''}`} />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {isRecording ? 'Recording...' : 'Click to record'}
+                  </span>
+                </div>
+
+                {/* Chat Messages */}
+                <ScrollArea className="h-[400px] pr-4">
+                  <div className="space-y-4">
+                    {chatMessages.map((message, index) => (
+                      <div
+                        key={index}
+                        className={`flex ${
+                          message.role === 'user' ? 'justify-end' : 'justify-start'
+                        }`}
+                      >
+                        <div
+                          className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                            message.role === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted'
+                          }`}
+                        >
+                          {message.content}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+
+                {/* Search Input */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Describe person or location..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  />
+                  <Button size="icon" onClick={handleSendMessage}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
@@ -173,27 +199,36 @@ export default function Dashboard() {
           </DialogHeader>
           {selectedPerson && (
             <div className="space-y-4">
-              <div className="aspect-square relative overflow-hidden rounded-lg bg-muted" />
+              <div className="aspect-square relative overflow-hidden rounded-lg bg-muted">
+                {selectedPerson.croppedImage && (
+                  <img
+                    src={selectedPerson.croppedImage}
+                    alt="Detected person"
+                    className="object-cover w-full h-full"
+                  />
+                )}
+              </div>
               <div className="space-y-3">
+                <div>
+                  <h4 className="text-sm font-medium">Description</h4>
+                  <p className="text-sm text-muted-foreground">{selectedPerson.description}</p>
+                </div>
                 <div>
                   <h4 className="text-sm font-medium">Time Detected</h4>
                   <p className="text-sm text-muted-foreground">{selectedPerson.time}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium">Age Estimate</h4>
-                  <p className="text-sm text-muted-foreground">{selectedPerson.details.age}</p>
+                  <h4 className="text-sm font-medium">Location</h4>
+                  <p className="text-sm text-muted-foreground">{selectedCamera?.location}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium">Clothing Description</h4>
-                  <p className="text-sm text-muted-foreground">{selectedPerson.details.clothing}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium">Environment</h4>
-                  <p className="text-sm text-muted-foreground">{selectedPerson.details.environment}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium">Movement</h4>
-                  <p className="text-sm text-muted-foreground">{selectedPerson.details.movement}</p>
+                  <h4 className="text-sm font-medium">Details</h4>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p>Age: {selectedPerson.details.age}</p>
+                    <p>Clothing: {selectedPerson.details.clothing}</p>
+                    <p>Environment: {selectedPerson.details.environment}</p>
+                    <p>Movement: {selectedPerson.details.movement}</p>
+                  </div>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium">Distinctive Features</h4>

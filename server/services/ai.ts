@@ -207,10 +207,25 @@ async function analyzePersonWithGPT4(imageUrl: string, bbox: [number, number, nu
   }
 }
 
-export async function analyzeImage(imageUrl: string): Promise<ImageAnalysisResult> {
+export async function analyzeImage(imageUrl: string): Promise<{
+  detections: {
+    bbox: [number, number, number, number];
+    confidence: number;
+    description: string;
+    croppedImage: string;
+    details: {
+      age: string;
+      clothing: string;
+      environment: string;
+      movement: string;
+      distinctive_features: string[];
+    };
+  }[];
+  summary: string;
+}> {
   try {
     console.log('Starting image analysis pipeline...');
-    // First detect all people using Roboflow API
+    // First detect all people using Roboflow
     const detections = await detectPeopleWithRoboflow(imageUrl);
     console.log('Roboflow detections:', detections);
 
