@@ -20,40 +20,36 @@ export function VoiceInput({ onTranscription, disabled }: VoiceInputProps) {
       mediaRecorder.current = new MediaRecorder(stream);
       chunks.current = [];
 
-      mediaRecorder.current.ondataavailable = (e) => {
+      mediaRecorder.current.ondataavailable = async (e) => {
         if (e.data.size > 0) {
           chunks.current.push(e.data);
-        }
-      };
 
-      mediaRecorder.current.onstop = async () => {
-        const audioBlob = new Blob(chunks.current, { type: 'audio/webm' });
-        const formData = new FormData();
-        formData.append('audio', audioBlob);
+          // Send current chunk for processing
+          const formData = new FormData();
+          formData.append('audio', e.data);
 
-        try {
-          const response = await fetch('/api/transcribe', {
-            method: 'POST',
-            body: formData,
-          });
+          try {
+            const response = await fetch('/api/transcribe', {
+              method: 'POST',
+              body: formData,
+            });
 
-          if (!response.ok) {
-            throw new Error('Failed to transcribe audio');
+            if (!response.ok) {
+              throw new Error('Failed to transcribe audio');
+            }
+
+            const { text } = await response.json();
+            if (text && text.trim()) {
+              onTranscription(text);
+            }
+          } catch (error) {
+            console.error('Transcription error:', error);
           }
-
-          const { text } = await response.json();
-          onTranscription(text);
-        } catch (error) {
-          console.error('Transcription error:', error);
-          toast({
-            title: "Error",
-            description: "Failed to process voice input. Please try again.",
-            variant: "destructive"
-          });
         }
       };
 
-      mediaRecorder.current.start();
+      // Set a shorter timeslice for more frequent processing
+      mediaRecorder.current.start(1000); // Process every second
       setIsRecording(true);
     } catch (error) {
       console.error('Recording error:', error);

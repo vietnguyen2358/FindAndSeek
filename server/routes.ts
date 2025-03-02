@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import { createServer } from "http";
 import { storage } from "./storage";
 import { insertCaseSchema, insertCameraFootageSchema } from "@shared/schema";
 import { z } from "zod";
@@ -7,45 +7,15 @@ import type { SearchFilter, DetectedPerson, SearchCriteria } from "@shared/types
 import OpenAI from "openai";
 import { findSimilarDetections, analyzeClothingDescription } from "./services/similarity-search";
 import fetch from "node-fetch";
+import multer from 'multer';
+
+// Configure multer for memory storage
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-// Helper function to get similarity score between search criteria and a detection
-async function getSimilarityScore(query: string, detection: DetectedPerson): Promise<number> {
-  try {
-    const detectionInfo = {
-      description: detection.description,
-      clothing: detection.details.clothing,
-      features: detection.details.distinctive_features,
-      location: detection.details.environment
-    };
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [
-        {
-          role: "system",
-          content: `Compare the search query with the detected person's details. Return a JSON number between 0 and 1 indicating how well they match based on clothing and physical description. Example: {"score": 0.85}`
-        },
-        {
-          role: "user",
-          content: `Search description: "${query}"
-Person detected: ${JSON.stringify(detectionInfo, null, 2)}`
-        }
-      ],
-      response_format: { type: "json_object" }
-    });
-
-    const result = JSON.parse(response.choices[0].message.content || "{}");
-    return result.score || 0;
-  } catch (error) {
-    console.error("Error getting similarity score:", error);
-    return 0;
-  }
-}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/cases", async (req, res) => {
@@ -299,18 +269,24 @@ Matches: ${topMatches.map(match =>
   });
 
 
-  // New route for audio transcription
-  app.post("/api/transcribe", async (req, res) => {
+  // Enhanced transcription route for real-time processing
+  app.post("/api/transcribe", upload.single('audio'), async (req, res) => {
     try {
-      const audioBuffer = req.body;
+      if (!req.file) {
+        throw new Error('No audio file received');
+      }
 
-      // Use Whisper for transcription
+      // Use Whisper for quick transcription
       const transcription = await openai.audio.transcriptions.create({
-        file: audioBuffer,
+        file: req.file.buffer,
         model: "whisper-1",
       });
 
-      // Process with Groq AI
+      if (!transcription.text.trim()) {
+        return res.json({ text: '' });
+      }
+
+      // Process with Groq AI for real-time understanding
       const response = await fetch('https://api.groq.com/v1/completions', {
         method: 'POST',
         headers: {
