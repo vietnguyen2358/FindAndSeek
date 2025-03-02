@@ -1,52 +1,119 @@
-# Find and Seek Backend
+# Find and Seek
 
-This is the FastAPI backend for the Find and Seek application. It provides the API endpoints for managing missing person cases, analyzing images, and predicting movement patterns.
+This is a modern web application for locating missing persons.
 
 ## Setup
 
-1. Create a virtual environment:
+1. Install dependencies:
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+# Frontend dependencies
+npm install
 
-2. Install dependencies:
-```bash
+# Backend dependencies
+cd backend
 pip install -r requirements.txt
+cd ..
 ```
 
-## Running the Server
+2. Configure environment variables:
+   - Copy `backend/.env.example` to `backend/.env` (if it exists)
+   - Add your OpenAI API key to `backend/.env`
+   - Add your Groq API key to `backend/.env` (optional, for enhanced comparison)
 
-To run the development server:
+## Running the Development Server
+
+To run the frontend development server:
 
 ```bash
-uvicorn app.main:app --host localhost --port 3000 --reload
+npm run dev
 ```
 
-The server will be available at `http://localhost:3000`.
+The frontend will be available at `http://localhost:3000`.
 
-## API Documentation
+To run the backend development server:
 
-Once the server is running, you can access:
-- Interactive API documentation (Swagger UI): `http://localhost:3000/docs`
-- Alternative API documentation (ReDoc): `http://localhost:3000/redoc`
+```bash
+npm run backend
+```
 
-## API Endpoints
+The backend will be available at `http://localhost:8000` with API documentation at `http://localhost:8000/docs`.
 
-- `POST /api/cases` - Create a new case
-- `GET /api/cases` - Get all cases
-- `GET /api/cases/{id}` - Get a specific case
-- `PATCH /api/cases/{id}` - Update a case
-- `POST /api/cases/{id}/analyze-image` - Analyze an image for a case
-- `POST /api/footage` - Add new camera footage
-- `GET /api/cases/{id}/footage` - Get all footage for a case
-- `POST /api/cases/{id}/predict-movement` - Predict movement patterns
+## Building for Production
+
+```bash
+npm run build
+npm run start
+```
 
 ## Development
 
-The backend is built with:
-- FastAPI - Modern Python web framework
-- Pydantic - Data validation using Python type annotations
-- Uvicorn - Lightning-fast ASGI server
+The application is built with:
 
-The application uses an in-memory storage system for development purposes. For production, you should implement a proper database backend.
+### Frontend
+- React - UI library
+- Tailwind CSS - Utility-first CSS framework
+- Shadcn UI - UI component library 
+- TypeScript - Type safety for JavaScript
+- Vite - Next generation frontend tooling
+
+### Backend
+- FastAPI - Modern, fast web framework for building APIs with Python
+- OpenAI - Integration with GPT-4o for image analysis
+- Groq - Optional LLM for comparing missing persons with detected individuals
+- YOLO (optional) - Object detection for identifying people in images
+- OpenCV (optional) - Computer vision for image processing
+- Pydantic - Data validation and settings management
+
+## Project Structure
+
+- `client/src/` - Contains the React application code
+  - `components/` - UI components
+  - `pages/` - Page components
+  - `hooks/` - Custom React hooks
+  - `lib/` - Utility functions and shared code
+- `shared/` - Shared types and utilities
+- `backend/` - FastAPI backend application
+  - `app/` - Python package containing the application
+  - `requirements.txt` - Python dependencies
+
+## API Endpoints
+
+- `GET /` - Root endpoint, returns a welcome message
+- `POST /api/analyzeimage` - Analyzes an uploaded image and returns information about a person
+- `POST /api/compare-images` - Compares a missing person image with a search image to find potential matches
+
+### Image Comparison API
+
+The image comparison API allows you to:
+1. Upload an image of a missing person
+2. Upload a search image that might contain the missing person
+3. Receive an analysis that compares the missing person to any people detected in the search image
+
+The endpoint uses:
+- OpenAI's GPT-4o Vision model for analyzing people in images
+- YOLO (if available) for detecting people in the search image
+- Groq's Llama 3 model (if available) for comparing the missing person with detected individuals
+
+Example usage with cURL:
+```bash
+curl -X POST "http://localhost:8000/api/compare-images" \
+  -F "missing_person_image=@/path/to/missing_person.jpg" \
+  -F "search_image=@/path/to/search_image.jpg"
+```
+
+## Testing
+
+You can test the image comparison functions without running the server:
+
+```bash
+cd backend
+python simple_test.py
+```
+
+Note: You'll need to add test images to `backend/test_images/` directory:
+- `missing_person.jpg` - An image of a person to search for
+- `search.jpg` - An image that may contain the person
+
+## License
+
+MIT
