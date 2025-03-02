@@ -6,9 +6,10 @@ import { VideoPlayer } from "@/components/video-player";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Mic, Camera, Bell, UserSearch, Phone, PhoneOff, MapPin } from "lucide-react";
+import { Mic, Camera, Bell, UserSearch, Phone, PhoneOff, MapPin, Send } from "lucide-react";
 import { mockPins, mockDetections, personImages } from "@/lib/mockData";
 import type { DetectedPerson, MapPin as MapPinType, SearchFilter } from "@shared/types";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { apiRequest } from "@/lib/queryClient";
+
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string;
+}
 
 export default function Dashboard() {
   const [selectedPerson, setSelectedPerson] = useState<DetectedPerson | null>(null);
@@ -26,12 +34,73 @@ export default function Dashboard() {
   const [searchResults, setSearchResults] = useState<DetectedPerson[]>([]);
   const [isCallActive, setIsCallActive] = useState(false);
   const [transcription, setTranscription] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      role: 'assistant',
+      content: "Hello! I'm your AI assistant. I can help you search for people and analyze descriptions. How can I help you today?",
+      timestamp: new Date().toLocaleString()
+    }
+  ]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleSearch = (filters: SearchFilter[]) => {
-    const results = mockDetections.filter(person =>
-      matchPersonToFilters(person, filters)
-    );
-    setSearchResults(results);
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) return;
+
+    setIsProcessing(true);
+    try {
+      // Add user message to chat
+      const userMessage: ChatMessage = {
+        role: 'user',
+        content: query,
+        timestamp: new Date().toLocaleString()
+      };
+      setChatMessages(prev => [...prev, userMessage]);
+
+      // Process with Groq
+      const result = await apiRequest('/api/parse-search', {
+        method: 'POST',
+        body: JSON.stringify({ query })
+      });
+
+      // Add system processing message
+      setChatMessages(prev => [...prev, {
+        role: 'system',
+        content: 'Processing your search...',
+        timestamp: new Date().toLocaleString()
+      }]);
+
+      const filters = result.filters || [];
+
+      // Filter persons based on the search criteria
+      const results = mockDetections.filter(person =>
+        matchPersonToFilters(person, filters)
+      );
+      setSearchResults(results);
+
+      // Add assistant response
+      const response: ChatMessage = {
+        role: 'assistant',
+        content: `I found ${results.length} people matching your description. ${
+          results.length > 0 
+            ? 'Here are the matches:' 
+            : 'Try providing more details or different search criteria.'
+        }`,
+        timestamp: new Date().toLocaleString()
+      };
+      setChatMessages(prev => [...prev, response]);
+
+    } catch (error) {
+      console.error('Error processing search:', error);
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error processing your search. Please try again.',
+        timestamp: new Date().toLocaleString()
+      }]);
+    } finally {
+      setIsProcessing(false);
+      setSearchQuery('');
+    }
   };
 
   const handlePersonsDetected = (persons: DetectedPerson[]) => {
@@ -43,7 +112,13 @@ export default function Dashboard() {
       setIsCallActive(true);
       // Mock live transcription updates
       const mockUpdate = () => {
-        setTranscription(prev => [...prev, "Operator: Last seen wearing a red jacket near downtown..."]);
+        const newTranscription = "Operator: Last seen wearing a red jacket near downtown...";
+        setTranscription(prev => [...prev]);
+        setChatMessages(prev => [...prev, {
+          role: 'system',
+          content: `📞 ${newTranscription}`,
+          timestamp: new Date().toLocaleString()
+        }]);
       };
       setTimeout(mockUpdate, 2000);
     } else {
@@ -107,14 +182,14 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Right Panel - Search & Call Transcription */}
+          {/* Right Panel - Chat Interface */}
           <div className="col-span-3">
-            <Card className="h-[calc(100vh-7rem)]">
+            <Card className="h-[calc(100vh-7rem)] flex flex-col">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <UserSearch className="w-5 h-5" />
-                    Search & Communication
+                    AI Assistant
                   </CardTitle>
                   <Button
                     size="icon"
@@ -130,63 +205,66 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-6">
-                {/* Search Section */}
-                <div className="space-y-4">
-                  <SearchFilters onSearch={handleSearch} />
-                  <ScrollArea className="h-[200px] border rounded-lg">
-                    <div className="p-4 space-y-4">
-                      {searchResults.length === 0 ? (
-                        <div className="text-center text-muted-foreground">
-                          No search results
+              <CardContent className="flex-1 flex flex-col space-y-4">
+                {/* Chat Messages */}
+                <ScrollArea className="flex-1 pr-4">
+                  <div className="space-y-4">
+                    {chatMessages.map((message, index) => (
+                      <div
+                        key={index}
+                        className={`flex ${
+                          message.role === 'user' ? 'justify-end' : 'justify-start'
+                        }`}
+                      >
+                        <div
+                          className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                            message.role === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : message.role === 'system'
+                              ? 'bg-muted text-muted-foreground'
+                              : 'bg-accent'
+                          }`}
+                        >
+                          <p className="text-sm">{message.content}</p>
+                          <p className="text-xs opacity-60 mt-1">
+                            {message.timestamp}
+                          </p>
                         </div>
-                      ) : (
-                        searchResults.map((person) => (
-                          <PersonCard
-                            key={person.id}
-                            person={person}
-                            onClick={() => setSelectedPerson(person)}
-                          />
-                        ))
-                      )}
-                    </div>
-                  </ScrollArea>
-                </div>
-
-                <Separator />
-
-                {/* Call Transcription */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium flex items-center gap-2">
-                      <Mic className="w-4 h-4" />
-                      Live Call Transcript
-                    </h3>
-                    {isCallActive && (
-                      <Badge variant="secondary" className="animate-pulse">
-                        Live
-                      </Badge>
-                    )}
+                      </div>
+                    ))}
                   </div>
-                  <ScrollArea className="h-[calc(100vh-36rem)] border rounded-lg">
-                    <div className="p-4 space-y-3">
-                      {transcription.length === 0 ? (
-                        <div className="text-center text-muted-foreground">
-                          {isCallActive ? "Listening..." : "No active call"}
-                        </div>
-                      ) : (
-                        transcription.map((line, i) => (
-                          <p key={i} className="text-sm">{line}</p>
-                        ))
-                      )}
-                      {isCallActive && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Mic className="h-4 w-4 animate-pulse" />
-                          <span className="text-sm">Listening...</span>
-                        </div>
-                      )}
+
+                  {/* Search Results */}
+                  {searchResults.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {searchResults.map((person) => (
+                        <PersonCard
+                          key={person.id}
+                          person={person}
+                          onClick={() => setSelectedPerson(person)}
+                        />
+                      ))}
                     </div>
-                  </ScrollArea>
+                  )}
+                </ScrollArea>
+
+                {/* Input Area */}
+                <div className="flex items-center gap-2 pt-4">
+                  <Input
+                    className="flex-1"
+                    placeholder="Describe who you're looking for..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch(searchQuery)}
+                    disabled={isProcessing}
+                  />
+                  <Button
+                    size="icon"
+                    onClick={() => handleSearch(searchQuery)}
+                    disabled={isProcessing || !searchQuery.trim()}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -325,7 +403,7 @@ function matchPersonToFilters(person: DetectedPerson, filters: SearchFilter[]): 
       case 'clothing':
         return person.details.clothing.toLowerCase().includes(searchValue);
       case 'physical':
-        return person.details.distinctive_features.some((f: string) => 
+        return person.details.distinctive_features.some((f: string) =>
           f.toLowerCase().includes(searchValue)
         );
       case 'location':
