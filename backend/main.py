@@ -1,41 +1,44 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Dict
 import uvicorn
+import os
+from dotenv import load_dotenv
 
-# Create FastAPI app
-app = FastAPI(
-    title="Simple API",
-    description="A simple API with a dummy endpoint",
-    version="1.0.0"
-)
+# Import the image_analyzer module - use absolute import to ensure it works correctly
+from image_analyzer import analyze_image
 
-# Add CORS middleware to allow cross-origin requests
+# Load environment variables
+load_dotenv()
+
+# Initialize FastAPI app
+app = FastAPI(title="Image Analysis API", version="1.0.0")
+
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For production, replace with specific origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def root() -> Dict[str, str]:
-    """
-    Root endpoint that returns a welcome message.
-    """
-    return {"message": "Welcome to the Simple API"}
+# Check for OpenAI API Key
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise RuntimeError("OPENAI_API_KEY environment variable is missing.")
 
-@app.get("/api/dummy")
-async def dummy_endpoint() -> Dict[str, str]:
+@app.get("/")
+def root():
+    return {"message": "Welcome to the Image Analysis API"}
+
+@app.post("/api/analyze-image")
+async def analyze_image_endpoint(file: UploadFile = File(...)):
     """
-    A dummy endpoint that returns a simple message.
+    Analyze an image using OpenAI's vision model to detect people and their characteristics
     """
-    return {
-        "status": "success",
-        "message": "This is a dummy endpoint",
-        "data": "Hello, world!"
-    }
+    # Call the analyze_image function from our imported module
+    # This will return a properly formatted response
+    return await analyze_image(file)
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True) 
+    uvicorn.run(app, host="0.0.0.0", port=8001, reload=True)
