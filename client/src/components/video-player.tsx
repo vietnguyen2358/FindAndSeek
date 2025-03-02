@@ -35,7 +35,7 @@ export function VideoPlayer({
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       try {
-        console.log('Sending frame for analysis:', img.src);
+        console.log('Analyzing frame with URL:', img.src);
         // Send the image URL for analysis
         const response = await fetch('/api/analyze-frame', {
           method: 'POST',
@@ -49,7 +49,9 @@ export function VideoPlayer({
         });
 
         if (!response.ok) {
-          throw new Error('Failed to analyze frame');
+          const error = await response.json();
+          console.error('Error from analyze-frame endpoint:', error);
+          return;
         }
 
         const analysis = await response.json();
@@ -59,6 +61,7 @@ export function VideoPlayer({
           // Draw detection boxes
           analysis.detections.forEach(({ bbox, confidence, description }) => {
             const [x, y, width, height] = bbox;
+            console.log('Drawing detection:', { x, y, width, height, confidence });
 
             // Draw semi-transparent background
             ctx.fillStyle = `rgba(59, 130, 246, ${confidence * 0.2})`;
@@ -69,7 +72,7 @@ export function VideoPlayer({
               height * canvas.height
             );
 
-            // Draw border
+            // Draw box
             ctx.strokeStyle = '#3b82f6';
             ctx.lineWidth = 2;
             ctx.strokeRect(
@@ -98,6 +101,10 @@ export function VideoPlayer({
       } catch (error) {
         console.error('Error analyzing frame:', error);
       }
+    };
+
+    img.onerror = (error) => {
+      console.error('Error loading image:', error);
     };
 
     // Load the test image
