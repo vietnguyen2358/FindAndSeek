@@ -1,0 +1,41 @@
+{
+  "id": 1,
+  "location": "Central Park West Entrance",
+  "timestamp": "2025-03-02T15:32:10.000Z",
+  "imageUrl": "/images/cameras/camera1.jpg",
+  "detections": [
+    {
+      "id": 1,
+      "confidence": 0.92,
+      "description": "Male, early 30s, athletic build",
+      "bounding_box": { "x": 120, "y": 80, "width": 100, "height": 200 },
+      "details": {
+        "clothing": "Red hoodie, black joggers",
+        "distinctive_features": "Baseball cap, white sneakers",
+        "environment": "Near park bench"
+      }
+    },
+    {
+      "id": 2,
+      "confidence": 0.87,
+      "description": "Female, mid-20s, slim build",
+      "bounding_box": { "x": 320, "y": 120, "width": 90, "height": 180 },
+      "details": {
+        "clothing": "Blue denim jacket, white t-shirt, black leggings",
+        "distinctive_features": "Carrying large tote bag",
+        "environment": "Walking on path"
+      }
+    },
+    {
+      "id": 3,
+      "confidence": 0.78,
+      "description": "Male, teenager, medium build",
+      "bounding_box": { "x": 450, "y": 150, "width": 80, "height": 160 },
+      "details": {
+        "clothing": "Green t-shirt with logo, khaki shorts",
+        "distinctive_features": "Skateboard, headphones",
+        "environment": "Near water fountain"
+      }
+    }
+  ]
+} 

@@ -1,0 +1,52 @@
+{
+  "id": 4,
+  "location": "City Park East Gate",
+  "timestamp": "2025-03-02T15:33:00.000Z",
+  "imageUrl": "/images/cameras/camera4.jpg",
+  "detections": [
+    {
+      "id": 11,
+      "confidence": 0.93,
+      "description": "Female, mid-30s, tall",
+      "bounding_box": { "x": 180, "y": 110, "width": 95, "height": 190 },
+      "details": {
+        "clothing": "Green rain jacket, dark jeans",
+        "distinctive_features": "Long blonde hair, dog on leash",
+        "environment": "Walking on path"
+      }
+    },
+    {
+      "id": 12,
+      "confidence": 0.84,
+      "description": "Male, early 20s, slim",
+      "bounding_box": { "x": 320, "y": 140, "width": 90, "height": 180 },
+      "details": {
+        "clothing": "Blue university sweatshirt, gray sweatpants",
+        "distinctive_features": "Backpack, running shoes",
+        "environment": "Jogging near trees"
+      }
+    },
+    {
+      "id": 13,
+      "confidence": 0.76,
+      "description": "Female, child (approximately 8-10), small",
+      "bounding_box": { "x": 420, "y": 160, "width": 70, "height": 140 },
+      "details": {
+        "clothing": "Pink jacket, purple skirt, white tights",
+        "distinctive_features": "Pigtails, holding balloon",
+        "environment": "Near playground"
+      }
+    },
+    {
+      "id": 14,
+      "confidence": 0.81,
+      "description": "Male, mid-40s, heavyset",
+      "bounding_box": { "x": 120, "y": 130, "width": 100, "height": 200 },
+      "details": {
+        "clothing": "Orange hiking vest, khaki pants",
+        "distinctive_features": "Sunglasses, large camera",
+        "environment": "Taking photos by lake"
+      }
+    }
+  ]
+} 

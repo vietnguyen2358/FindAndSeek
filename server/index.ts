@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./simplified-routes";
 import { setupVite, serveStatic, log } from "./vite";
+import "dotenv/config";
 
 const app = express();
 app.use(express.json());
@@ -56,14 +57,10 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client
-  const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  // Use port from environment variable
+  const port = process.env.PORT ? parseInt(process.env.PORT) : 3001;
+  console.log(`Attempting to start server on port ${port}`);
+  server.listen(port, () => {
     log(`serving on port ${port}`);
   });
 })();

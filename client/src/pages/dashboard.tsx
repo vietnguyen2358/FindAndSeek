@@ -8,7 +8,7 @@ import type { DetectedPerson, MapPin as MapPinType } from "@shared/types";
 import { Input } from "@/components/ui/input";
 import { VoiceInput } from "@/components/voice-input";
 import { CallButton } from "@/components/call-button";
-import { mockPins } from "@/lib/mockData";
+import { mockPins, mockDetections } from "@/lib/mockData";
 import { CameraSidebar } from "@/components/camera-sidebar";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -37,6 +37,11 @@ export default function Dashboard() {
       timestamp: new Date().toLocaleString()
     }
   ]);
+
+  useEffect(() => {
+    // Load mock detections when the dashboard mounts
+    setDetections(mockDetections);
+  }, []);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -90,7 +95,7 @@ export default function Dashboard() {
         }
 
         // Split the analysis into multiple messages for better readability
-        const analysisMessages = aiResponse.analysis.filter(msg => msg.trim()).map(content => ({
+        const analysisMessages = aiResponse.analysis.filter((msg: string) => msg.trim()).map((content: string) => ({
           role: 'assistant' as const,
           content,
           timestamp: new Date().toLocaleString()
@@ -131,6 +136,12 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <h1 className="text-xl font-bold">Find & Seek</h1>
+              <nav className="ml-6">
+                <ul className="flex space-x-4">
+                  <li><a href="/" className="text-sm font-medium hover:text-primary">Dashboard</a></li>
+                  <li><a href="/cameras" className="text-sm font-medium hover:text-primary">Camera Feeds</a></li>
+                </ul>
+              </nav>
             </div>
             <div className="flex items-center gap-2">
               <CallButton

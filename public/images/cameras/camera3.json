@@ -1,0 +1,41 @@
+{
+  "id": 3,
+  "location": "Subway Station Exit 4",
+  "timestamp": "2025-03-02T15:32:50.000Z",
+  "imageUrl": "/images/cameras/camera3.jpg",
+  "detections": [
+    {
+      "id": 8,
+      "confidence": 0.94,
+      "description": "Male, mid-30s, average build",
+      "bounding_box": { "x": 150, "y": 120, "width": 100, "height": 200 },
+      "details": {
+        "clothing": "Brown leather jacket, black jeans",
+        "distinctive_features": "Messenger bag, beanie hat",
+        "environment": "Coming up stairs"
+      }
+    },
+    {
+      "id": 9,
+      "confidence": 0.88,
+      "description": "Female, late 20s, athletic",
+      "bounding_box": { "x": 300, "y": 150, "width": 90, "height": 180 },
+      "details": {
+        "clothing": "Gray athletic jacket, black leggings",
+        "distinctive_features": "Headphones, water bottle",
+        "environment": "Near ticket machines"
+      }
+    },
+    {
+      "id": 10,
+      "confidence": 0.79,
+      "description": "Male, elderly, thin",
+      "bounding_box": { "x": 450, "y": 170, "width": 85, "height": 170 },
+      "details": {
+        "clothing": "Tweed coat, navy trousers, flat cap",
+        "distinctive_features": "Using walking cane",
+        "environment": "By the exit door"
+      }
+    }
+  ]
+} 

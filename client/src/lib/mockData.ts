@@ -42,153 +42,185 @@ export const mockPins: MapPin[] = [
 
 // NYC DOT Traffic Camera feeds - using image URLs
 export const cameraFeeds = {
-  1: "/images/Screenshot 2025-03-02 at 7.32.50 AM.png", // Times Square
-  2: "/images/Screenshot 2025-03-02 at 7.32.38 AM.png", // 5 Ave @ 42 St
-  3: "/images/Screenshot 2025-03-02 at 7.32.10 AM.png", // Herald Square
-  4: "/images/Screenshot 2025-03-02 at 7.33.00 AM.png"  // Columbus Circle
+  1: "/images/cameras/camera1.png", // Times Square
+  2: "/images/cameras/camera2.png", // 5 Ave @ 42 St
+  3: "/images/cameras/camera3.png", // Herald Square
+  4: "/images/cameras/camera4.png"  // Columbus Circle
 };
 
 // Empty mock data for other features
 export const cameraImages = {
-  1: "/images/cameras/camera1.jpg",
-  2: "/images/cameras/camera2.jpg",
-  3: "/images/cameras/camera3.jpg",
-  // Add more as needed
+  1: "/images/cameras/camera1.png",
+  2: "/images/cameras/camera2.png",
+  3: "/images/cameras/camera3.png",
+  4: "/images/cameras/camera4.png"
 };
 export const mockDetections: DetectedPerson[] = [
   // Times Square Camera (id: 1)
   {
     id: 1,
     cameraId: 1,
-    time: "2025-03-02T10:30:23",
-    description: "Adult male walking south",
-    confidence: 0.89,
-    thumbnail: "/images/person1.jpg",
-    bbox: [100, 200, 150, 300],
+    time: "2025-03-02T15:32:10.000Z",
+    description: "Male, early 30s, athletic build",
+    confidence: 0.92,
+    thumbnail: "/images/cameras/camera1.png",
+    bbox: [120, 80, 100, 200],
     details: {
-      age: "30-40",
-      clothing: "Navy blue peacoat, black jeans",
-      environment: "Times Square sidewalk",
-      movement: "Walking steadily south",
-      distinctive_features: ["Grey beanie", "Brown messenger bag"]
+      age: "30-35",
+      clothing: "Red hoodie, black joggers",
+      environment: "Near park bench",
+      movement: "Walking slowly",
+      distinctive_features: ["Baseball cap", "White sneakers"]
     }
   },
   {
     id: 2,
     cameraId: 1,
-    time: "2025-03-02T10:31:15",
-    description: "Young female with shopping bags",
-    confidence: 0.92,
-    thumbnail: "/images/person2.jpg",
-    bbox: [250, 150, 300, 280],
+    time: "2025-03-02T15:32:10.000Z",
+    description: "Female, mid-20s, slim build",
+    confidence: 0.87,
+    thumbnail: "/images/cameras/camera1.png",
+    bbox: [320, 120, 90, 180],
     details: {
-      age: "20-25",
-      clothing: "Red puffer jacket, white sneakers",
-      environment: "Near crosswalk",
-      movement: "Standing at intersection",
-      distinctive_features: ["Multiple shopping bags", "Long blonde hair"]
+      age: "23-28",
+      clothing: "Blue denim jacket, white t-shirt, black leggings",
+      environment: "Walking on path",
+      movement: "Brisk walking",
+      distinctive_features: ["Large tote bag", "Ponytail"]
+    }
+  },
+  {
+    id: 3,
+    cameraId: 1,
+    time: "2025-03-02T15:32:10.000Z",
+    description: "Male, teenager, medium build",
+    confidence: 0.78,
+    thumbnail: "/images/cameras/camera1.png",
+    bbox: [450, 150, 80, 160],
+    details: {
+      age: "15-18",
+      clothing: "Green t-shirt with logo, khaki shorts",
+      environment: "Near water fountain",
+      movement: "Standing still",
+      distinctive_features: ["Skateboard", "Headphones"]
     }
   },
 
-  // 5 Ave @ 42 St Camera (id: 2)
-  {
-    id: 3,
-    cameraId: 2,
-    time: "2025-03-02T10:32:00",
-    description: "Elderly person with cane",
-    confidence: 0.87,
-    thumbnail: "/images/person3.jpg",
-    bbox: [400, 200, 450, 350],
-    details: {
-      age: "65-75",
-      clothing: "Brown trench coat, grey slacks",
-      environment: "Near bus stop",
-      movement: "Walking slowly with assistance",
-      distinctive_features: ["Walking cane", "Fedora hat"]
-    }
-  },
+  // Downtown Mall Camera (id: 2)
   {
     id: 4,
     cameraId: 2,
-    time: "2025-03-02T10:32:45",
-    description: "Business professional",
-    confidence: 0.94,
-    thumbnail: "/images/person4.jpg",
-    bbox: [150, 300, 200, 400],
+    time: "2025-03-02T15:32:38.000Z",
+    description: "Female, early 40s, tall",
+    confidence: 0.89,
+    thumbnail: "/images/cameras/camera2.png",
+    bbox: [200, 100, 95, 190],
     details: {
-      age: "35-45",
-      clothing: "Black suit, burgundy tie",
-      environment: "Building entrance",
-      movement: "Entering office building",
-      distinctive_features: ["Briefcase", "White dress shirt"]
+      age: "40-45",
+      clothing: "Yellow blouse, black pants, formal coat",
+      environment: "Near mall entrance",
+      movement: "Walking through doors",
+      distinctive_features: ["Glasses", "Shoulder-length hair"]
     }
   },
-
-  // Herald Square Camera (id: 3)
   {
     id: 5,
-    cameraId: 3,
-    time: "2025-03-02T10:31:30",
-    description: "Teen with backpack",
-    confidence: 0.88,
-    thumbnail: "/images/person5.jpg",
-    bbox: [300, 250, 350, 380],
+    cameraId: 2,
+    time: "2025-03-02T15:32:38.000Z",
+    description: "Male, late 20s, muscular build",
+    confidence: 0.91,
+    thumbnail: "/images/cameras/camera2.png",
+    bbox: [350, 130, 110, 210],
     details: {
-      age: "15-18",
-      clothing: "Green hoodie, black backpack",
-      environment: "Herald Square Plaza",
-      movement: "Walking with friends",
-      distinctive_features: ["Large black backpack", "White headphones"]
+      age: "27-32",
+      clothing: "Navy blue polo shirt, beige chinos",
+      environment: "Walking through doors",
+      movement: "Entering building",
+      distinctive_features: ["Beard", "Wristwatch"]
+    }
+  },
+  
+  // Subway Station Camera (id: 3)
+  {
+    id: 8,
+    cameraId: 3,
+    time: "2025-03-02T15:32:50.000Z",
+    description: "Male, mid-30s, average build",
+    confidence: 0.94,
+    thumbnail: "/images/cameras/camera3.png",
+    bbox: [150, 120, 100, 200],
+    details: {
+      age: "33-38",
+      clothing: "Brown leather jacket, black jeans",
+      environment: "Coming up stairs",
+      movement: "Climbing stairs",
+      distinctive_features: ["Messenger bag", "Beanie hat"]
     }
   },
   {
-    id: 6,
+    id: 9,
     cameraId: 3,
-    time: "2025-03-02T10:32:15",
-    description: "Delivery worker on bike",
-    confidence: 0.91,
-    thumbnail: "/images/person6.jpg",
-    bbox: [200, 150, 250, 300],
+    time: "2025-03-02T15:32:50.000Z",
+    description: "Female, late 20s, athletic",
+    confidence: 0.88,
+    thumbnail: "/images/cameras/camera3.png",
+    bbox: [300, 150, 90, 180],
     details: {
-      age: "25-35",
-      clothing: "Food delivery jacket, black pants",
-      environment: "Bike lane",
-      movement: "Cycling east",
-      distinctive_features: ["Delivery bag", "Bicycle helmet"]
+      age: "26-30",
+      clothing: "Gray athletic jacket, black leggings",
+      environment: "Near ticket machines",
+      movement: "Checking phone",
+      distinctive_features: ["Headphones", "Water bottle"]
     }
   },
 
-  // Columbus Circle Camera (id: 4)
+  // City Park Camera (id: 4)
   {
-    id: 7,
+    id: 11,
     cameraId: 4,
-    time: "2025-03-02T10:30:45",
-    description: "Jogger in athletic wear",
+    time: "2025-03-02T15:33:00.000Z",
+    description: "Female, mid-30s, tall",
     confidence: 0.93,
-    thumbnail: "/images/person7.jpg",
-    bbox: [350, 200, 400, 350],
+    thumbnail: "/images/cameras/camera4.png",
+    bbox: [180, 110, 95, 190],
     details: {
-      age: "25-30",
-      clothing: "Blue running jacket, black leggings",
-      environment: "Park entrance",
-      movement: "Jogging in place at light",
-      distinctive_features: ["Fitness tracker", "Running shoes"]
+      age: "33-38",
+      clothing: "Green rain jacket, dark jeans",
+      environment: "Walking on path",
+      movement: "Walking with dog",
+      distinctive_features: ["Long blonde hair", "Dog on leash"]
     }
   },
   {
-    id: 8,
+    id: 12,
     cameraId: 4,
-    time: "2025-03-02T10:31:45",
-    description: "Tourist with camera",
-    confidence: 0.86,
-    thumbnail: "/images/person8.jpg",
-    bbox: [250, 300, 300, 450],
+    time: "2025-03-02T15:33:00.000Z",
+    description: "Male, early 20s, slim",
+    confidence: 0.84,
+    thumbnail: "/images/cameras/camera4.png",
+    bbox: [320, 140, 90, 180],
     details: {
-      age: "40-50",
-      clothing: "Khaki shorts, white t-shirt",
-      environment: "Near monument",
-      movement: "Taking photos",
-      distinctive_features: ["DSLR camera", "Sun hat"]
+      age: "20-25",
+      clothing: "Blue university sweatshirt, gray sweatpants",
+      environment: "Jogging near trees",
+      movement: "Jogging",
+      distinctive_features: ["Backpack", "Running shoes"]
+    }
+  },
+  {
+    id: 13,
+    cameraId: 4,
+    time: "2025-03-02T15:33:00.000Z",
+    description: "Female, child (approximately 8-10), small",
+    confidence: 0.76,
+    thumbnail: "/images/cameras/camera4.png",
+    bbox: [420, 160, 70, 140],
+    details: {
+      age: "8-10",
+      clothing: "Pink jacket, purple skirt, white tights",
+      environment: "Near playground",
+      movement: "Playing",
+      distinctive_features: ["Pigtails", "Holding balloon"]
     }
   }
 ];

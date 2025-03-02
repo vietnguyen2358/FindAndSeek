@@ -5,7 +5,7 @@ import { cameraFeeds } from "@/lib/mockData";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { X, User } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface CameraSidebarProps {
   pin: MapPin;
@@ -15,8 +15,24 @@ interface CameraSidebarProps {
 
 export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) {
   const [hasError, setHasError] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [cameraDetections, setCameraDetections] = useState<DetectedPerson[]>([]);
+
+  useEffect(() => {
+    // Get the camera feed URL for this pin
+    const feedUrl = cameraFeeds[pin.id as keyof typeof cameraFeeds];
+    console.log("Camera feed URL:", feedUrl, "for pin ID:", pin.id);
+    setImageUrl(feedUrl);
+    setHasError(false); // Reset error state when switching cameras
+
+    // Filter detections for this camera
+    const filtered = detections.filter(d => d.cameraId === pin.id);
+    console.log(`Found ${filtered.length} detections for camera ${pin.id}`);
+    setCameraDetections(filtered);
+  }, [pin, detections]);
 
   const handleImageError = () => {
+    console.error(`Error loading image: ${imageUrl}`);
     setHasError(true);
   };
 
@@ -37,31 +53,39 @@ export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) 
       </CardHeader>
       <CardContent className="flex-1 space-y-4 p-4">
         <div className="aspect-video bg-black rounded-lg overflow-hidden relative">
-          <img
-            src={cameraFeeds[pin.id as keyof typeof cameraFeeds]}
-            className="w-full h-full object-cover"
-            alt={`Camera feed from ${pin.location}`}
-            onError={handleImageError}
-          />
+          {imageUrl && (
+            <>
+              <img
+                src={imageUrl}
+                className="w-full h-full object-cover"
+                alt={`Camera feed from ${pin.location}`}
+                onError={handleImageError}
+              />
+              {/* Debug info */}
+              <div className="absolute top-0 left-0 bg-black/70 text-white text-xs p-1 m-1 rounded">
+                Camera ID: {pin.id} | Path: {imageUrl}
+              </div>
+            </>
+          )}
           {hasError && (
             <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-              Unable to load camera feed
+              Unable to load camera feed: {imageUrl}
             </div>
           )}
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium">Recent Detections</h3>
-            <Badge variant="secondary">{detections.length} found</Badge>
+            <Badge variant="secondary">{cameraDetections.length} found</Badge>
           </div>
           <ScrollArea className="h-[calc(100vh-26rem)]">
             <div className="space-y-2">
-              {detections.length === 0 ? (
+              {cameraDetections.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No detections yet.
                 </p>
               ) : (
-                detections.map((person) => (
+                cameraDetections.map((person) => (
                   <Card key={person.id} className="p-3">
                     <div className="flex items-start gap-3">
                       <div className="p-2 bg-secondary rounded-full">
@@ -69,7 +93,7 @@ export function CameraSidebar({ pin, onClose, detections }: CameraSidebarProps) 
                       </div>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
-                          <div className="text-sm font-medium">{person.details.age} years</div>
+                          <div className="text-sm font-medium">{person.details.age}</div>
                           <Badge variant="outline">{Math.round(person.confidence * 100)}%</Badge>
                         </div>
                         <div className="text-xs text-muted-foreground space-y-1">

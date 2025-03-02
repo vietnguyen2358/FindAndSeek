@@ -12,14 +12,28 @@ import multer from 'multer';
 // Configure multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI client if API key exists
+let openai: OpenAI | null = null;
+try {
+  if (process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  } else {
+    console.warn("WARNING: OPENAI_API_KEY not set. AI features will not work!");
+  }
+} catch (error) {
+  console.error("Error initializing OpenAI client:", error);
+}
 
 // Helper function to get similarity score between search criteria and a detection
 async function getSimilarityScore(query: string, detection: DetectedPerson): Promise<number> {
   try {
+    if (!openai) {
+      console.warn("OpenAI client not initialized. Returning default similarity score.");
+      return 0.5; // Default score when OpenAI is not available
+    }
+
     const detectionInfo = {
       description: detection.description,
       clothing: detection.details.clothing,
@@ -242,12 +256,13 @@ export async function registerRoutes(app: Express) {
 
       if (detections.length > 0) {
         // Get detailed analysis from GPT-4
-        const analysisResponse = await openai.chat.completions.create({
-          model: "gpt-4-turbo-preview",
-          messages: [
-            {
-              role: "system",
-              content: `You are an AI assistant specializing in missing persons searches and surveillance analysis. 
+        if (openai) {
+          const analysisResponse = await openai.chat.completions.create({
+            model: "gpt-4-turbo-preview",
+            messages: [
+              {
+                role: "system",
+                content: `You are an AI assistant specializing in missing persons searches and surveillance analysis. 
 Focus on:
 - Matching physical descriptions and clothing
 - Analyzing movement patterns
@@ -255,10 +270,10 @@ Focus on:
 - Assessing timing of sightings
 
 Be precise but compassionate in your responses.`
-            },
-            {
-              role: "user",
-              content: `Search Query: "${query}"
+              },
+              {
+                role: "user",
+                content: `Search Query: "${query}"
 Detected persons:
 ${detections.map(d => `- ${d.description} wearing ${d.details.clothing} at ${d.details.environment}`).join('\n')}
 
@@ -268,58 +283,73 @@ Analyze these detections in relation to the search query. For each detection:
 3. Consider the location and timing
 
 Provide a concise analysis with confidence levels.`
-            }
-          ]
-        });
+              }
+            ]
+          });
 
-        // Get similarity scores for each detection
-        const scoredDetections = await Promise.all(
-          detections.map(async (detection) => ({
-            detection,
-            score: await getSimilarityScore(query, detection)
-          }))
-        );
+          // Get similarity scores for each detection
+          const scoredDetections = await Promise.all(
+            detections.map(async (detection) => ({
+              detection,
+              score: await getSimilarityScore(query, detection)
+            }))
+          );
 
-        // Sort by score and get top matches
-        const topMatches = scoredDetections
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 3)
-          .map(({ detection, score }) => ({
-            id: detection.id,
-            description: detection.description,
-            time: detection.time,
-            location: detection.details.environment,
-            details: detection.details,
-            thumbnail: detection.thumbnail,
-            matchScore: score
-          }));
+          // Sort by score and get top matches
+          const topMatches = scoredDetections
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 3)
+            .map(({ detection, score }) => ({
+              id: detection.id,
+              description: detection.description,
+              time: detection.time,
+              location: detection.details.environment,
+              details: detection.details,
+              thumbnail: detection.thumbnail,
+              matchScore: score
+            }));
 
-        res.json({
-          matches: topMatches,
-          analysis: analysisResponse.choices[0].message.content?.split('\n')
-        });
+          res.json({
+            matches: topMatches,
+            analysis: analysisResponse.choices[0].message.content?.split('\n')
+          });
+        } else {
+          console.warn("OpenAI client not initialized. Cannot generate AI analysis.");
+          res.json({
+            matches: [],
+            analysis: ['Error processing search']
+          });
+        }
 
       } else {
         // No matches found - provide a helpful response
-        const noMatchResponse = await openai.chat.completions.create({
-          model: "gpt-4-turbo-preview",
-          messages: [
-            {
-              role: "system",
-              content: "You are a helpful AI assistant for a missing persons search system. Be informative but sensitive in your responses."
-            },
-            {
-              role: "user",
-              content: `The search query was: "${query}" but no matching persons were detected in the current camera feeds. 
-              Provide a helpful response that acknowledges this and suggests what to look out for.`
-            }
-          ]
-        });
+        if (openai) {
+          const noMatchResponse = await openai.chat.completions.create({
+            model: "gpt-4-turbo-preview",
+            messages: [
+              {
+                role: "system",
+                content: "You are a helpful AI assistant for a missing persons search system. Be informative but sensitive in your responses."
+              },
+              {
+                role: "user",
+                content: `The search query was: "${query}" but no matching persons were detected in the current camera feeds. 
+                Provide a helpful response that acknowledges this and suggests what to look out for.`
+              }
+            ]
+          });
 
-        res.json({
-          matches: [],
-          analysis: [noMatchResponse.choices[0].message.content || "No matches found in current camera feeds"]
-        });
+          res.json({
+            matches: [],
+            analysis: [noMatchResponse.choices[0].message.content || "No matches found in current camera feeds"]
+          });
+        } else {
+          console.warn("OpenAI client not initialized. Cannot generate AI analysis.");
+          res.json({
+            matches: [],
+            analysis: ['Error processing search']
+          });
+        }
       }
 
     } catch (error) {

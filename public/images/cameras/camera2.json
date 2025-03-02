@@ -1,0 +1,52 @@
+{
+  "id": 2,
+  "location": "Downtown Mall Main Entrance",
+  "timestamp": "2025-03-02T15:32:38.000Z",
+  "imageUrl": "/images/cameras/camera2.jpg",
+  "detections": [
+    {
+      "id": 4,
+      "confidence": 0.89,
+      "description": "Female, early 40s, tall",
+      "bounding_box": { "x": 200, "y": 100, "width": 95, "height": 190 },
+      "details": {
+        "clothing": "Yellow blouse, black pants, formal coat",
+        "distinctive_features": "Wearing glasses, shoulder-length hair",
+        "environment": "Near mall entrance"
+      }
+    },
+    {
+      "id": 5,
+      "confidence": 0.91,
+      "description": "Male, late 20s, muscular build",
+      "bounding_box": { "x": 350, "y": 130, "width": 110, "height": 210 },
+      "details": {
+        "clothing": "Navy blue polo shirt, beige chinos",
+        "distinctive_features": "Beard, wristwatch",
+        "environment": "Walking through doors"
+      }
+    },
+    {
+      "id": 6,
+      "confidence": 0.76,
+      "description": "Female, teenager, petite",
+      "bounding_box": { "x": 480, "y": 160, "width": 85, "height": 170 },
+      "details": {
+        "clothing": "Pink crop top, high-waisted jeans",
+        "distinctive_features": "Ponytail, carrying shopping bags",
+        "environment": "By the information desk"
+      }
+    },
+    {
+      "id": 7,
+      "confidence": 0.82,
+      "description": "Male, mid-50s, heavyset",
+      "bounding_box": { "x": 100, "y": 140, "width": 100, "height": 200 },
+      "details": {
+        "clothing": "Gray suit, white shirt, red tie",
+        "distinctive_features": "Balding, carrying briefcase",
+        "environment": "Speaking with security"
+      }
+    }
+  ]
+} 
