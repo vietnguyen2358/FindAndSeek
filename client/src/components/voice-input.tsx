@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface VoiceInputProps {
-  onTranscription: (text: string) => void;
+  onTranscription: (text: string, processed?: string) => void; // Modified to accept processed text
   disabled?: boolean;
 }
 
@@ -30,6 +30,7 @@ export function VoiceInput({ onTranscription, disabled }: VoiceInputProps) {
           formData.append('audio', e.data);
 
           try {
+            // First get Whisper transcription
             const response = await fetch('/api/transcribe', {
               method: 'POST',
               body: formData,
@@ -39,12 +40,19 @@ export function VoiceInput({ onTranscription, disabled }: VoiceInputProps) {
               throw new Error('Failed to transcribe audio');
             }
 
-            const { text } = await response.json();
+            const { text, processed } = await response.json();
+
+            // Send both raw transcription and processed response to chat
             if (text && text.trim()) {
-              onTranscription(text);
+              onTranscription(text, processed);
             }
           } catch (error) {
             console.error('Transcription error:', error);
+            toast({
+              title: "Error",
+              description: "Failed to process voice input. Please try again.",
+              variant: "destructive"
+            });
           }
         }
       };

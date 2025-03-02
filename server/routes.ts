@@ -325,7 +325,11 @@ Matches: ${topMatches.map(match =>
       const groqResponse = await response.json() as { choices: Array<{ message: { content: string } }> };
       const processedDescription = groqResponse.choices[0].message.content;
 
-      res.json({ text: processedDescription });
+      // Return both the raw transcription and processed response
+      res.json({ 
+        text: transcription.text,
+        processed: processedDescription
+      });
     } catch (error) {
       console.error('Transcription error:', error);
       res.status(500).json({ error: 'Failed to process audio' });

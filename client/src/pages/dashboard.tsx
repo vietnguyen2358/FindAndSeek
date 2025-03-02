@@ -137,7 +137,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleVoiceTranscription = (text: string) => {
+  const handleVoiceTranscription = (text: string, processed: string) => {
     // Show recording indicator
     setChatMessages(prev => [...prev, {
       role: 'system',
@@ -154,15 +154,15 @@ export default function Dashboard() {
       isAudio: true
     }]);
 
-    // Show processing indicator
+    // Show AI's processed response
     setChatMessages(prev => [...prev, {
-      role: 'system',
-      content: '🤖 AI Assistant is analyzing your message...',
+      role: 'assistant',
+      content: processed,
       timestamp: new Date().toLocaleString()
     }]);
 
-    // Process the transcription as a search
-    handleSearch(text);
+    // Process as a search if we have detected entities
+    handleSearch(processed);
   };
 
   return (
