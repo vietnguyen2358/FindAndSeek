@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Mic, Send, Camera, Bell, UserSearch, Phone, PhoneOff } from "lucide-react";
 import { mockPins, mockDetections, personImages } from "@/lib/mockData";
-import type { DetectedPerson, MapPin, SearchFilter } from "@shared/types"; // Assuming SearchFilter type is defined here
+import type { DetectedPerson, MapPin, SearchFilter } from "@shared/types";
 import {
   Dialog,
   DialogContent,
@@ -101,58 +101,65 @@ export default function Dashboard() {
           </div>
 
           {/* Right Panel - Search & Call Transcription */}
-          <div className="col-span-3 space-y-4">
-            {/* Search */}
-            <Card>
+          <div className="col-span-3">
+            <Card className="h-full">
               <CardHeader>
-                <CardTitle>Search</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Search & Communication</CardTitle>
+                  <Button
+                    size="icon"
+                    variant={isCallActive ? "destructive" : "outline"}
+                    onClick={toggleCall}
+                  >
+                    {isCallActive ? (
+                      <PhoneOff className="h-4 w-4" />
+                    ) : (
+                      <Phone className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent>
-                <SearchFilters onSearch={handleSearch} />
-                <ScrollArea className="h-[200px] mt-4">
-                  <div className="space-y-2">
-                    {searchResults.map((person) => (
-                      <PersonCard
-                        key={person.id}
-                        person={person}
-                        onClick={() => setSelectedPerson(person)}
-                      />
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
+              <CardContent className="space-y-4">
+                {/* Search Section */}
+                <div className="space-y-2">
+                  <SearchFilters onSearch={handleSearch} />
+                  <ScrollArea className="h-[200px] border rounded-md p-2">
+                    <div className="space-y-2">
+                      {searchResults.map((person) => (
+                        <PersonCard
+                          key={person.id}
+                          person={person}
+                          onClick={() => setSelectedPerson(person)}
+                        />
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
 
-            {/* Call Transcription */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <CardTitle>Live Call</CardTitle>
-                <Button
-                  size="icon"
-                  variant={isCallActive ? "destructive" : "outline"}
-                  onClick={toggleCall}
-                >
-                  {isCallActive ? (
-                    <PhoneOff className="h-4 w-4" />
-                  ) : (
-                    <Phone className="h-4 w-4" />
-                  )}
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[300px] rounded-md border p-4">
-                  <div className="space-y-2">
-                    {transcription.map((line, i) => (
-                      <p key={i} className="text-sm">{line}</p>
-                    ))}
+                {/* Call Transcription */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-medium">Live Call Transcript</h3>
                     {isCallActive && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Mic className="h-4 w-4 animate-pulse" />
-                        <span className="text-sm">Listening...</span>
-                      </div>
+                      <Badge variant="secondary" className="animate-pulse">
+                        Live
+                      </Badge>
                     )}
                   </div>
-                </ScrollArea>
+                  <ScrollArea className="h-[200px] border rounded-md p-2">
+                    <div className="space-y-2">
+                      {transcription.map((line, i) => (
+                        <p key={i} className="text-sm">{line}</p>
+                      ))}
+                      {isCallActive && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Mic className="h-4 w-4 animate-pulse" />
+                          <span className="text-sm">Listening...</span>
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -279,11 +286,26 @@ function PersonCard({ person, onClick }: { person: DetectedPerson; onClick: () =
   );
 }
 
-// Placeholder for the missing function.  This needs a proper implementation.
 function matchPersonToFilters(person: DetectedPerson, filters: SearchFilter[]): boolean {
-  //  Implement your filtering logic here.  This is a crucial part that needs to be defined
-  // based on how the SearchFilter type and the person object are structured.
-  //Example:
-  const searchText = `${person.description} ${person.details.clothing} ${person.details.distinctive_features.join(' ')}`.toLowerCase();
-  return filters.some(filter => searchText.includes(filter.toLowerCase()));
+  return filters.every(filter => {
+    const searchValue = filter.value.toLowerCase();
+    switch (filter.category) {
+      case 'clothing':
+        return person.details.clothing.toLowerCase().includes(searchValue);
+      case 'physical':
+        return person.details.distinctive_features.some((f: string) => 
+          f.toLowerCase().includes(searchValue)
+        );
+      case 'location':
+        return person.details.environment.toLowerCase().includes(searchValue);
+      case 'time':
+        return person.time.toLowerCase().includes(searchValue);
+      case 'age':
+        return person.details.age.toLowerCase().includes(searchValue);
+      case 'action':
+        return person.details.movement.toLowerCase().includes(searchValue);
+      default:
+        return false;
+    }
+  });
 }

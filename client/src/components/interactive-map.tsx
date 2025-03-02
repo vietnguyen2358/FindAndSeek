@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Card } from "@/components/ui/card";
@@ -12,6 +12,7 @@ interface MapPin {
   lng: number;
   type: "camera" | "lastSeen";
   timestamp?: string;
+  location: string;
 }
 
 interface InteractiveMapProps {
@@ -29,6 +30,7 @@ export function InteractiveMap({
 }: InteractiveMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -62,14 +64,13 @@ export function InteractiveMap({
     };
   }, []);
 
+  // Handle pins updates
   useEffect(() => {
     if (!map.current) return;
 
     // Clear existing markers
-    const markers = document.getElementsByClassName('mapboxgl-marker');
-    while(markers[0]) {
-      markers[0].remove();
-    }
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
 
     pins.forEach((pin) => {
       const el = document.createElement("div");
@@ -90,6 +91,7 @@ export function InteractiveMap({
               `<div class="p-2 text-xs">
                 <strong>${pin.type === "camera" ? "Camera Location" : "Last Seen"}</strong>
                 ${pin.timestamp ? `<br>Time: ${pin.timestamp}` : ""}
+                ${pin.location ? `<br>Location: ${pin.location}` : ""}
               </div>`
             )
         )
@@ -98,8 +100,16 @@ export function InteractiveMap({
       if (onPinClick) {
         el.addEventListener("click", () => onPinClick(pin));
       }
+
+      markersRef.current.push(marker);
     });
   }, [pins, onPinClick]);
+
+  // Handle center changes
+  useEffect(() => {
+    if (!map.current) return;
+    map.current.setCenter(center);
+  }, [center]);
 
   return (
     <Card className="w-full h-[600px] overflow-hidden border-border bg-background relative">
