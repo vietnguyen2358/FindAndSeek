@@ -329,7 +329,11 @@ export default function Dashboard() {
             <DialogTitle className="flex items-center gap-2">
               <UserSearch className="w-5 h-5" />
               Person Details
-              {/* Confidence percentage removed */}
+              {selectedPerson?.matchScore !== undefined && (
+                <Badge variant="secondary">
+                  {Math.round(selectedPerson.matchScore * 100)}% Match
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
           {selectedPerson && (
@@ -347,15 +351,18 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground">{selectedPerson.description}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium">Time Detected</h4>
-                  <p className="text-sm text-muted-foreground">{selectedPerson.time}</p>
+                  <h4 className="text-sm font-medium">Camera Information</h4>
+                  <div className="text-sm text-muted-foreground">
+                    <p>Camera ID: {selectedPerson.cameraId}</p>
+                    <p>Location: {selectedPerson.details.environment}</p>
+                    <p>Time Detected: {selectedPerson.time}</p>
+                  </div>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium">Details</h4>
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <p>Age: {selectedPerson.details.age}</p>
                     <p>Clothing: {selectedPerson.details.clothing}</p>
-                    <p>Environment: {selectedPerson.details.environment}</p>
                     <p>Movement: {selectedPerson.details.movement}</p>
                   </div>
                 </div>

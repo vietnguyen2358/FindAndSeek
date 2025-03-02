@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { DetectedPerson } from "@shared/types";
 import { cn } from "@/lib/utils";
+import { Camera } from "lucide-react";
 
 interface PersonCardProps {
   person: DetectedPerson & { matchScore?: number };
@@ -26,17 +27,30 @@ export function PersonCard({ person, onClick, highlight }: PersonCardProps) {
             className="w-16 h-16 rounded object-cover"
           />
           <div className="flex-1">
-            <div className="flex items-center justify-between">
-              <p className="font-medium">{person.description}</p>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-medium">{person.description}</p>
+                <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
+                  <Camera className="w-3 h-3" />
+                  <span>Camera {person.cameraId}</span>
+                </div>
+              </div>
               {person.matchScore !== undefined && (
                 <Badge variant="secondary">
                   {Math.round(person.matchScore * 100)}% Match
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {person.time} - {person.details.environment}
-            </p>
+
+            <div className="mt-2">
+              <p className="text-sm text-muted-foreground">
+                {person.time}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Location: {person.details.environment}
+              </p>
+            </div>
+
             <div className="flex flex-wrap gap-1 mt-2">
               <Badge variant="secondary" className="text-xs">
                 {person.details.clothing}
