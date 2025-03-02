@@ -2,10 +2,13 @@ import { useState } from "react";
 import { InteractiveMap } from "@/components/interactive-map";
 import { SearchFilters } from "@/components/search-filters";
 import { AlertsPanel } from "@/components/alerts-panel";
+import { VideoPlayer } from "@/components/video-player";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Mic, Send, Camera, Bell, UserSearch, Phone, PhoneOff } from "lucide-react";
 import { mockPins, mockDetections, personImages } from "@/lib/mockData";
-import type { DetectedPerson } from "@shared/types";
+import type { DetectedPerson, MapPin } from "@shared/types";
 import {
   Dialog,
   DialogContent,
@@ -14,15 +17,18 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, UserSearch, Bell } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 export default function Dashboard() {
   const [selectedPerson, setSelectedPerson] = useState<DetectedPerson | null>(null);
+  const [selectedPin, setSelectedPin] = useState<MapPin | null>(null);
   const [detections, setDetections] = useState(mockDetections);
   const [searchResults, setSearchResults] = useState<DetectedPerson[]>([]);
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [transcription, setTranscription] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearch = (filters: string[]) => {
-    // Simple mock search implementation
     const results = mockDetections.filter(person => {
       const searchText = `${person.description} ${person.details.clothing} ${person.details.distinctive_features.join(' ')}`.toLowerCase();
       return filters.some(filter => searchText.includes(filter.toLowerCase()));
@@ -30,34 +36,34 @@ export default function Dashboard() {
     setSearchResults(results);
   };
 
+  const handlePersonsDetected = (persons: DetectedPerson[]) => {
+    setDetections(persons);
+  };
+
+  const toggleCall = () => {
+    if (!isCallActive) {
+      setIsCallActive(true);
+      // Mock live transcription updates
+      const mockUpdate = () => {
+        setTranscription(prev => [...prev, "Operator: Last seen wearing a red jacket near downtown..."]);
+      };
+      setTimeout(mockUpdate, 2000);
+    } else {
+      setIsCallActive(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-4 space-y-4">
-        {/* Search Bar */}
-        <SearchFilters onSearch={handleSearch} />
-
+      <div className="container mx-auto p-4">
         <div className="grid grid-cols-12 gap-4">
-          {/* Left Panel - Map */}
-          <div className="col-span-8">
-            <InteractiveMap
-              center={[-74.006, 40.7128]}
-              zoom={14}
-              pins={mockPins}
-              onPinClick={() => {}}
-            />
-          </div>
-
-          {/* Right Panel - Detections & Alerts */}
-          <div className="col-span-4">
+          {/* Left Panel - Detections & Alerts */}
+          <div className="col-span-3">
             <Tabs defaultValue="detections" className="h-full">
               <TabsList className="w-full">
                 <TabsTrigger value="detections" className="flex-1">
                   <Camera className="w-4 h-4 mr-2" />
                   Detections
-                </TabsTrigger>
-                <TabsTrigger value="search" className="flex-1">
-                  <UserSearch className="w-4 h-4 mr-2" />
-                  Search
                 </TabsTrigger>
                 <TabsTrigger value="alerts" className="flex-1">
                   <Bell className="w-4 h-4 mr-2" />
@@ -79,9 +85,33 @@ export default function Dashboard() {
                 </ScrollArea>
               </TabsContent>
 
-              <TabsContent value="search" className="mt-4 h-[calc(100vh-12rem)]">
-                <ScrollArea className="h-full pr-4">
-                  <div className="space-y-4">
+              <TabsContent value="alerts" className="mt-4">
+                <AlertsPanel />
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          {/* Center - Map */}
+          <div className="col-span-6">
+            <InteractiveMap
+              center={[-74.006, 40.7128]}
+              zoom={14}
+              pins={mockPins}
+              onPinClick={setSelectedPin}
+            />
+          </div>
+
+          {/* Right Panel - Search & Call Transcription */}
+          <div className="col-span-3 space-y-4">
+            {/* Search */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Search</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SearchFilters onSearch={handleSearch} />
+                <ScrollArea className="h-[200px] mt-4">
+                  <div className="space-y-2">
                     {searchResults.map((person) => (
                       <PersonCard
                         key={person.id}
@@ -91,15 +121,72 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </ScrollArea>
-              </TabsContent>
+              </CardContent>
+            </Card>
 
-              <TabsContent value="alerts" className="mt-4">
-                <AlertsPanel />
-              </TabsContent>
-            </Tabs>
+            {/* Call Transcription */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle>Live Call</CardTitle>
+                <Button
+                  size="icon"
+                  variant={isCallActive ? "destructive" : "outline"}
+                  onClick={toggleCall}
+                >
+                  {isCallActive ? (
+                    <PhoneOff className="h-4 w-4" />
+                  ) : (
+                    <Phone className="h-4 w-4" />
+                  )}
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[300px] rounded-md border p-4">
+                  <div className="space-y-2">
+                    {transcription.map((line, i) => (
+                      <p key={i} className="text-sm">{line}</p>
+                    ))}
+                    {isCallActive && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Mic className="h-4 w-4 animate-pulse" />
+                        <span className="text-sm">Listening...</span>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
+
+      {/* Camera View Dialog */}
+      <Dialog open={!!selectedPin} onOpenChange={() => setSelectedPin(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Camera Feed - {selectedPin?.location}</DialogTitle>
+          </DialogHeader>
+          {selectedPin && (
+            <div className="space-y-4">
+              <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                <VideoPlayer
+                  showDetections={true}
+                  onPersonsDetected={handlePersonsDetected}
+                  cameraId={selectedPin.id}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Last updated: {selectedPin.timestamp}
+                </span>
+                <Badge variant="secondary">
+                  {detections.length} people detected
+                </Badge>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Person Details Dialog */}
       <Dialog open={!!selectedPerson} onOpenChange={() => setSelectedPerson(null)}>

@@ -10,6 +10,15 @@ export const mockPins: MapPin[] = Array.from({ length: 20 }).map((_, i) => ({
   location: `Location ${i + 1}`
 }));
 
+// Test camera feeds
+export const cameraImages = {
+  1: "https://images.unsplash.com/photo-1517732306149-e8f829eb588a?q=80&w=1000&auto=format&fit=crop",
+  2: "https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?q=80&w=1000&auto=format&fit=crop",
+  3: "https://images.unsplash.com/photo-1506854309843-995c2c241f8d?q=80&w=1000&auto=format&fit=crop",
+  4: "https://images.unsplash.com/photo-1519658422992-0c8495f08389?q=80&w=1000&auto=format&fit=crop",
+  5: "https://images.unsplash.com/photo-1464938050520-ef2270bb8ce8?q=80&w=1000&auto=format&fit=crop"
+};
+
 // Mock detections with rich descriptions
 export const mockDetections: DetectedPerson[] = [
   {
@@ -17,6 +26,8 @@ export const mockDetections: DetectedPerson[] = [
     time: new Date(Date.now() - 1800000).toLocaleString(),
     description: "Young woman in red coat walking north",
     confidence: 0.92,
+    thumbnail: "data:image/jpeg;base64,/9j...", // Placeholder for actual thumbnail
+    bbox: [0.2, 0.3, 0.1, 0.2],
     details: {
       age: "25-30",
       clothing: "Red winter coat, black pants, brown boots",
@@ -30,6 +41,8 @@ export const mockDetections: DetectedPerson[] = [
     time: new Date(Date.now() - 2400000).toLocaleString(),
     description: "Elderly man with walking stick",
     confidence: 0.88,
+    thumbnail: "data:image/jpeg;base64,/9j...", // Placeholder for actual thumbnail
+    bbox: [0.5, 0.4, 0.1, 0.2],
     details: {
       age: "65-75",
       clothing: "Navy blue jacket, grey slacks, flat cap",
@@ -43,6 +56,8 @@ export const mockDetections: DetectedPerson[] = [
     time: new Date(Date.now() - 3000000).toLocaleString(),
     description: "Teenager with backpack on skateboard",
     confidence: 0.95,
+    thumbnail: "data:image/jpeg;base64,/9j...", // Placeholder for actual thumbnail
+    bbox: [0.3, 0.6, 0.1, 0.2],
     details: {
       age: "15-18",
       clothing: "Black hoodie, ripped jeans, white sneakers",
@@ -79,7 +94,7 @@ export const mockDetections: DetectedPerson[] = [
   }
 ];
 
-// Test images for visualization
+// Test images for visualization.  Replacing old personImages with the updated one.
 export const personImages = {
   1: "https://images.unsplash.com/photo-1517732306149-e8f829eb588a",
   2: "https://images.unsplash.com/photo-1499952127939-9bbf5af6c51c",
