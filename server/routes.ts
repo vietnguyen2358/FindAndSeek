@@ -4,7 +4,14 @@ import { storage } from "./storage";
 import { insertCaseSchema, insertCameraFootageSchema } from "@shared/schema";
 import { analyzeReport, analyzeImage, predictMovement } from "./services/ai";
 import { z } from "zod";
-import { VideoProcessor } from "./services/videoProcessor";
+import type { SearchFilter } from "@shared/types";
+import OpenAI from "openai";
+
+// Initialize Groq client
+const openai = new OpenAI({
+  baseURL: "https://api.groq.com/v1",
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/cases", async (req, res) => {
@@ -184,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add the new search parsing endpoint
+  // New search parsing endpoint
   app.post("/api/parse-search", async (req, res) => {
     try {
       console.log('Received search parsing request:', req.body);
@@ -196,22 +203,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { query } = schema.parse(req.body);
 
       const response = await openai.chat.completions.create({
-        model: "grok-2-1212",
+        model: "llama2-70b-4096",
         messages: [
           {
             role: "system",
-            content: `Parse the search query and extract structured filters in this format:
+            content: `Parse the search query and extract structured filters. For example, if input is "man wearing black pants and green shirt seen downtown around 3pm", output should be:
             {
               "filters": [
-                {"category": "clothing", "value": "specific clothing item or color"},
-                {"category": "physical", "value": "physical description"},
-                {"category": "location", "value": "location mentioned"},
-                {"category": "time", "value": "time or timeframe mentioned"},
-                {"category": "age", "value": "age or age range"},
-                {"category": "action", "value": "what the person was doing"}
+                {"category": "clothing", "value": "black pants"},
+                {"category": "clothing", "value": "green shirt"},
+                {"category": "location", "value": "downtown"},
+                {"category": "time", "value": "around 3pm"}
               ]
             }
-            Only include filters that are actually mentioned in the query.`
+            Categories can be: clothing, physical, location, time, age, action.
+            Return only JSON with no additional text.`
           },
           {
             role: "user",
@@ -222,6 +228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const result = JSON.parse(response.choices[0].message.content || "{}");
+      console.log('Parsed search filters:', result);
       res.json(result);
     } catch (error: any) {
       console.error("Error parsing search query:", error);

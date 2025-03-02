@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Search, Loader2, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { parseSearchQuery } from "@/lib/groqSearch";
 import type { SearchFilter } from "@shared/types";
+import { apiRequest } from "@/lib/queryClient";
 
 interface SearchFiltersProps {
   onSearch: (filters: SearchFilter[]) => void;
@@ -31,7 +31,16 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
 
     setIsAnalyzing(true);
     try {
-      const filters = await parseSearchQuery(searchQuery);
+      const response = await apiRequest("/api/parse-search", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ query: searchQuery })
+      });
+
+      const result = await response.json();
+      const filters = result.filters || [];
       setActiveFilters(filters);
       onSearch(filters);
 
@@ -40,6 +49,7 @@ export function SearchFilters({ onSearch }: SearchFiltersProps) {
         description: `Found ${filters.length} search criteria.`,
       });
     } catch (error) {
+      console.error('Error parsing search query:', error);
       toast({
         title: "Search Failed",
         description: "Failed to analyze search query.",
