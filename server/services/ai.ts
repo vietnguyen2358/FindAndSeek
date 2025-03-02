@@ -1,14 +1,14 @@
 import OpenAI from "openai";
 
-// Initialize OpenAI client
+// Initialize OpenAI client with fallback for development
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY || "dummy-key-for-development",
 });
 
-// Initialize the Groq client with API key
+// Initialize the Groq client with API key and fallback for development
 const groq = new OpenAI({
   baseURL: "https://api.groq.com/openai/v1",
-  apiKey: process.env.GROQ_API_KEY,
+  apiKey: process.env.GROQ_API_KEY || "dummy-key-for-development",
 });
 
 interface AnalysisResult {
@@ -36,6 +36,13 @@ interface ImageAnalysisResult {
 
 // Get embeddings for a text using Groq
 async function getEmbeddings(text: string): Promise<number[]> {
+  // Check if we're using the dummy key for development
+  if (process.env.GROQ_API_KEY === undefined || process.env.GROQ_API_KEY === "dummy-key-for-development") {
+    console.log("Using mock embeddings for development");
+    // Return a mock embedding (128-dimensional vector with random values)
+    return Array(128).fill(0).map(() => Math.random());
+  }
+
   try {
     const response = await groq.embeddings.create({
       model: "grok-2-1212",
@@ -163,6 +170,28 @@ async function analyzePerson(base64Image: string, bbox: [number, number, number,
 }
 
 export async function analyzeImage(base64Image: string): Promise<ImageAnalysisResult> {
+  // Check if we're using the dummy key for development
+  if (process.env.OPENAI_API_KEY === undefined || process.env.OPENAI_API_KEY === "dummy-key-for-development") {
+    console.log("Using mock image analysis for development");
+    return {
+      detections: [
+        {
+          confidence: 0.95,
+          bbox: [50, 50, 200, 400],
+          description: "Adult male with blue shirt walking towards the east side of the frame",
+          details: {
+            age: "30-40",
+            clothing: "Blue shirt, black pants",
+            environment: "Urban street setting",
+            movement: "Walking east",
+            distinctive_features: ["tall build", "baseball cap", "messenger bag"]
+          }
+        }
+      ],
+      summary: "Detected 1 person in the scene"
+    };
+  }
+
   try {
     // First detect all people in the image
     const detections = await detectPeople(base64Image);
@@ -192,6 +221,23 @@ export async function analyzeImage(base64Image: string): Promise<ImageAnalysisRe
 }
 
 export async function analyzeReport(text: string): Promise<AnalysisResult> {
+  // Check if we're using the dummy key for development
+  if (process.env.GROQ_API_KEY === undefined || process.env.GROQ_API_KEY === "dummy-key-for-development") {
+    console.log("Using mock report analysis for development");
+    
+    // Create some reasonable mock data based on common patterns in reports
+    const mockEntities = ["John Doe", "blue jacket", "black jeans", "brown hair", "glasses"];
+    const mockLocations = ["Central Park", "5th Avenue", "Downtown area", "Coffee shop"];
+    const mockTimestamps = ["Yesterday at 3pm", "April 15th", "Last seen around noon"];
+    
+    return {
+      entities: mockEntities,
+      locations: mockLocations,
+      timestamps: mockTimestamps,
+      confidence: 0.85
+    };
+  }
+
   try {
     const response = await groq.chat.completions.create({
       model: "grok-2-1212",
