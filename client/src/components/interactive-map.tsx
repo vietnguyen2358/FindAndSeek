@@ -51,7 +51,6 @@ export function InteractiveMap({
 
     newMap.addControl(new mapboxgl.NavigationControl({ showCompass: false }));
 
-    // Add custom styles for labels and roads
     newMap.on('load', () => {
       // Make water darker
       newMap.setPaintProperty('water', 'fill-color', '#1a1a1a');
@@ -68,20 +67,20 @@ export function InteractiveMap({
     map.current = newMap;
 
     return () => {
-      // Clean up markers before removing map
       Object.values(markersRef.current).forEach(marker => marker.remove());
+      markersRef.current = {};
       if (map.current) {
         map.current.remove();
       }
     };
-  }, []);
+  }, []); // Only run once on mount
 
   // Handle pins updates
   useEffect(() => {
     const currentMap = map.current;
     if (!currentMap || !isMapReady) return;
 
-    // Track existing pins to remove stale ones
+    // Track existing pins
     const currentPinIds = new Set(pins.map(pin => pin.id));
 
     // Remove stale markers
@@ -111,15 +110,6 @@ export function InteractiveMap({
       pulse.style.animationDuration = isHighlighted ? "1s" : "2s";
       el.appendChild(pulse);
 
-      // Create popup content
-      const popupContent = `
-        <div class="p-2 text-xs">
-          <strong>${pin.type === "camera" ? "Camera Location" : "Last Seen"}</strong>
-          ${pin.timestamp ? `<br>Time: ${pin.timestamp}` : ""}
-          ${pin.location ? `<br>Location: ${pin.location}` : ""}
-        </div>
-      `;
-
       let marker = markersRef.current[pin.id];
 
       if (!marker) {
@@ -127,17 +117,8 @@ export function InteractiveMap({
         marker = new mapboxgl.Marker({
           element: el,
           anchor: 'center',
-          offset: [0, 0]
         })
-          .setLngLat([pin.lng, pin.lat])
-          .setPopup(
-            new mapboxgl.Popup({ 
-              offset: 25,
-              closeButton: false,
-              closeOnClick: false
-            })
-              .setHTML(popupContent)
-          );
+          .setLngLat([pin.lng, pin.lat]);
 
         marker.addTo(currentMap);
         markersRef.current[pin.id] = marker;
@@ -147,12 +128,9 @@ export function InteractiveMap({
           el.addEventListener("click", () => onPinClick(pin));
         }
       } else {
-        // Update existing marker
+        // Update existing marker's element and position
         marker.getElement().replaceWith(el);
         marker.setLngLat([pin.lng, pin.lat]);
-
-        // Ensure marker stays in place
-        marker.addTo(currentMap);
       }
     });
   }, [pins, highlightedPinId, onPinClick, isMapReady]);
@@ -164,7 +142,7 @@ export function InteractiveMap({
     map.current.flyTo({
       center,
       zoom,
-      duration: 2000,
+      duration: 1000,
       essential: true
     });
   }, [center, zoom, isMapReady]);
