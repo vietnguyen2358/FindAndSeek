@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 import os
@@ -32,6 +33,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static frontend files
+app.mount("/", StaticFiles(directory="dist/public", html=True), name="static")
+
 # Pydantic models for request/response validation
 class DetectedPersonDetails(BaseModel):
     age: str
@@ -58,7 +62,7 @@ class SearchQuery(BaseModel):
 async def health_check():
     return {"status": "healthy", "message": "FastAPI server is running"}
 
-# Helper functions
+# Get embeddings for text using Groq
 def get_embeddings(text: str) -> List[float]:
     """Get embeddings for text using Groq"""
     try:
