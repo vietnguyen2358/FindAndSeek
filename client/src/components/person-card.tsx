@@ -1,11 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { DetectedPerson } from "@shared/types";
-import { personImages } from "@/lib/mockData";
 import { cn } from "@/lib/utils";
 
 interface PersonCardProps {
-  person: DetectedPerson;
+  person: DetectedPerson & { matchScore?: number };
   onClick: () => void;
   highlight?: boolean;
 }
@@ -22,16 +21,23 @@ export function PersonCard({ person, onClick, highlight }: PersonCardProps) {
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           <img
-            src={personImages[person.id as keyof typeof personImages]}
+            src={person.thumbnail}
             alt={`Person ${person.id}`}
             className="w-16 h-16 rounded object-cover"
           />
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <p className="font-medium">{person.description}</p>
-              <Badge variant={person.confidence > 0.8 ? "default" : "secondary"}>
-                {Math.round(person.confidence * 100)}%
-              </Badge>
+              <div className="flex gap-2">
+                {person.matchScore !== undefined && (
+                  <Badge variant={person.matchScore > 0.8 ? "default" : "secondary"}>
+                    {Math.round(person.matchScore * 100)}% Match
+                  </Badge>
+                )}
+                <Badge variant={person.confidence > 0.8 ? "default" : "secondary"}>
+                  {Math.round(person.confidence * 100)}% Confidence
+                </Badge>
+              </div>
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               {person.time}

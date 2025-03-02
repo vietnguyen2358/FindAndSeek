@@ -3,13 +3,47 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertCaseSchema, insertCameraFootageSchema } from "@shared/schema";
 import { z } from "zod";
-import type { SearchFilter } from "@shared/types";
+import type { SearchFilter, DetectedPerson } from "@shared/types";
 import OpenAI from "openai";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Helper function to get similarity score between search criteria and a detection
+async function getSimilarityScore(query: string, detection: DetectedPerson): Promise<number> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-turbo-preview",
+      messages: [
+        {
+          role: "system",
+          content: `You are a similarity matching expert. Compare the search query with the person detection and return a similarity score between 0 and 1 as a JSON number. Higher scores mean better matches. Consider all aspects: physical description, clothing, location, time, and actions.`
+        },
+        {
+          role: "user",
+          content: `Search query: "${query}"
+
+Person detected:
+- Description: ${detection.description}
+- Clothing: ${detection.details.clothing}
+- Age: ${detection.details.age}
+- Location: ${detection.details.environment}
+- Movement: ${detection.details.movement}
+- Features: ${detection.details.distinctive_features.join(", ")}`
+        }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const result = JSON.parse(response.choices[0].message.content || "{}");
+    return result.score || 0;
+  } catch (error) {
+    console.error("Error getting similarity score:", error);
+    return 0;
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/cases", async (req, res) => {
@@ -189,17 +223,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Updated search parsing endpoint with better error handling
   app.post("/api/parse-search", async (req, res) => {
     try {
       console.log('Received search parsing request:', req.body);
 
       const schema = z.object({
-        query: z.string()
+        query: z.string(),
+        detections: z.array(z.any()).optional()
       });
 
-      const { query } = schema.parse(req.body);
+      const { query, detections = [] } = schema.parse(req.body);
 
+      // First, get search analysis from ChatGPT
       const response = await openai.chat.completions.create({
         model: "gpt-4-turbo-preview",
         messages: [
@@ -233,9 +268,60 @@ Your response must be a valid JSON object with this structure:
         throw new Error('No response content received from ChatGPT');
       }
 
-      const result = JSON.parse(response.choices[0].message.content);
-      console.log('Parsed search filters:', result);
-      res.json(result);
+      const searchAnalysis = JSON.parse(response.choices[0].message.content);
+
+      // If detections were provided, analyze them for matches
+      if (detections.length > 0) {
+        // Get similarity scores for each detection
+        const scoredDetections = await Promise.all(
+          detections.map(async (detection) => ({
+            detection,
+            score: await getSimilarityScore(query, detection)
+          }))
+        );
+
+        // Sort by score and get top 3
+        const topMatches = scoredDetections
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3)
+          .map(({ detection, score }) => ({
+            ...detection,
+            matchScore: score
+          }));
+
+        // Get analysis of why these are the best matches
+        const matchAnalysis = await openai.chat.completions.create({
+          model: "gpt-4-turbo-preview",
+          messages: [
+            {
+              role: "system",
+              content: "Explain why these detections match the search criteria. Be concise but specific about the matching elements."
+            },
+            {
+              role: "user",
+              content: `Search query: "${query}"
+              Top matches:
+              ${topMatches.map((match, i) => `
+              Match ${i + 1} (${Math.round(match.matchScore * 100)}% match):
+              - ${match.description}
+              - ${match.details.clothing}
+              - ${match.details.environment}
+              `).join('\n')}`
+            }
+          ]
+        });
+
+        // Return combined results
+        res.json({
+          ...searchAnalysis,
+          topMatches,
+          matchAnalysis: matchAnalysis.choices[0].message.content
+        });
+      } else {
+        // Just return the search analysis if no detections provided
+        res.json(searchAnalysis);
+      }
+
     } catch (error: any) {
       console.error("Error parsing search query:", error);
       res.status(400).json({ 

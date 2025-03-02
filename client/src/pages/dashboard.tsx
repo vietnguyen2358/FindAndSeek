@@ -63,41 +63,63 @@ export default function Dashboard() {
       };
       setChatMessages(prev => [...prev, userMessage]);
 
-      // Process with ChatGPT
+      // Process with ChatGPT, including current detections
       const result = await apiRequest('/api/parse-search', {
         method: 'POST',
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ 
+          query,
+          detections // Send current detections for analysis
+        })
       });
 
-      // Filter persons based on the search criteria
-      const results = mockDetections.filter(person =>
-        matchPersonToFilters(person, result.filters || [])
-      );
-      setSearchResults(results);
+      // Update search results with ranked matches if available
+      if (result.topMatches) {
+        setSearchResults(result.topMatches);
 
-      // Add AI response
-      setChatMessages(prev => [...prev, {
-        role: 'assistant',
-        content: result.response,
-        timestamp: new Date().toLocaleString()
-      }]);
+        // Add match analysis to chat
+        setChatMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: result.response + "\n\n" + result.matchAnalysis,
+            timestamp: new Date().toLocaleString()
+          }
+        ]);
+      } else {
+        // Handle case when no detections were analyzed
+        setSearchResults([]);
+        setChatMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: result.response,
+            timestamp: new Date().toLocaleString()
+          }
+        ]);
+      }
 
-      // If there are suggestions, add them
+      // Add suggestions if available
       if (result.suggestions?.length > 0) {
-        setChatMessages(prev => [...prev, {
-          role: 'assistant',
-          content: "You might also want to consider:\n" + result.suggestions.join("\n"),
-          timestamp: new Date().toLocaleString()
-        }]);
+        setChatMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: "You might also want to consider:\n" + result.suggestions.join("\n"),
+            timestamp: new Date().toLocaleString()
+          }
+        ]);
       }
 
     } catch (error) {
       console.error('Error processing search:', error);
-      setChatMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error processing your search. Please try again.',
-        timestamp: new Date().toLocaleString()
-      }]);
+      setChatMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Sorry, I encountered an error processing your search. Please try again.',
+          timestamp: new Date().toLocaleString()
+        }
+      ]);
     } finally {
       setIsProcessing(false);
       setSearchQuery('');
