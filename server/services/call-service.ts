@@ -13,24 +13,24 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-interface TranscriptionResult {
-  text: string;
-  confidence: number;
-}
-
 export async function handleIncomingCall(req: Request, res: Response) {
-  const twiml = new twilio.twiml.VoiceResponse();
+  try {
+    const twiml = new twilio.twiml.VoiceResponse();
 
-  twiml.say('Welcome to the Person Search system. Please describe who you are looking for.');
-  twiml.record({
-    maxLength: 60,
-    action: '/api/call/transcribe',
-    transcribe: true,
-    transcribeCallback: '/api/call/process-transcription'
-  });
+    twiml.say('Welcome to Find & Seek. Please describe who you are looking for.');
+    twiml.record({
+      maxLength: 60,
+      action: '/api/call/transcribe',
+      transcribe: true,
+      transcribeCallback: '/api/call/process-transcription'
+    });
 
-  res.type('text/xml');
-  res.send(twiml.toString());
+    res.type('text/xml');
+    res.send(twiml.toString());
+  } catch (error) {
+    console.error('Error handling incoming call:', error);
+    res.status(500).send('Error handling call');
+  }
 }
 
 export async function transcribeAudio(audioUrl: string): Promise<TranscriptionResult> {
@@ -56,7 +56,11 @@ export async function transcribeAudio(audioUrl: string): Promise<TranscriptionRe
 export async function processTranscription(req: Request, res: Response) {
   try {
     const { transcriptionText } = req.body;
-    
+
+    if (!transcriptionText) {
+      throw new Error('No transcription text provided');
+    }
+
     // Process with Groq AI
     const response = await fetch('https://api.groq.com/v1/completions', {
       method: 'POST',
@@ -85,17 +89,19 @@ export async function processTranscription(req: Request, res: Response) {
     const processedDescription = groqResponse.choices[0].message.content;
 
     // Make an outbound call with the results
-    await client.calls.create({
-      twiml: new twilio.twiml.VoiceResponse()
-        .say('I have processed your description. Let me search our database.')
-        .pause({ length: 2 })
-        .say(`Based on your description: ${processedDescription}`)
-        .toString(),
-      to: req.body.From,
-      from: process.env.TWILIO_PHONE_NUMBER
-    });
+    if (req.body.From) {
+      await client.calls.create({
+        twiml: new twilio.twiml.VoiceResponse()
+          .say('I have processed your description. Let me search our database.')
+          .pause({ length: 2 })
+          .say(`Based on your description: ${processedDescription}`)
+          .toString(),
+        to: req.body.From,
+        from: process.env.TWILIO_PHONE_NUMBER || '',
+      });
+    }
 
-    res.json({ success: true });
+    res.json({ success: true, description: processedDescription });
   } catch (error) {
     console.error('Error processing transcription:', error);
     res.status(500).json({ error: 'Failed to process transcription' });
@@ -104,16 +110,34 @@ export async function processTranscription(req: Request, res: Response) {
 
 export async function initiateCall(phoneNumber: string, message: string) {
   try {
+    if (!phoneNumber || !message) {
+      throw new Error('Phone number and message are required');
+    }
+
+    if (!process.env.TWILIO_PHONE_NUMBER) {
+      throw new Error('Twilio phone number not configured');
+    }
+
     await client.calls.create({
       twiml: new twilio.twiml.VoiceResponse()
-        .say(message)
+        .say({
+          voice: 'alice',
+          language: 'en-US',
+          text: `Welcome to Find & Seek. ${message}`
+        })
         .toString(),
       to: phoneNumber,
       from: process.env.TWILIO_PHONE_NUMBER
     });
+
     return { success: true };
   } catch (error) {
     console.error('Error initiating call:', error);
     throw error;
   }
+}
+
+interface TranscriptionResult {
+  text: string;
+  confidence: number;
 }

@@ -138,17 +138,25 @@ export default function Dashboard() {
     }
   };
 
+  const handleCallResponse = (transcription: string) => {
+    setChatMessages(prev => [...prev, {
+      role: 'system',
+      content: `📞 Phone transcription: ${transcription}`,
+      timestamp: new Date().toLocaleString()
+    }]);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <img src="/logo.svg" alt="Logo" className="h-8" />
-              <h1 className="text-xl font-bold">Person Search & Tracking</h1>
+              <img src="/logo.svg" alt="Find & Seek" className="h-8" />
+              <h1 className="text-xl font-bold">Find & Seek</h1>
             </div>
             <div className="flex items-center gap-2">
-              <CallButton />
+              <CallButton onTranscription={handleCallResponse} />
               <Button variant="outline" size="sm">
                 <History className="w-4 h-4 mr-2" />
                 Search History
