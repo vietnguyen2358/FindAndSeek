@@ -32,7 +32,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Pydantic models
+# Pydantic models for request/response validation
 class DetectedPersonDetails(BaseModel):
     age: str
     clothing: str
@@ -52,6 +52,11 @@ class ImageAnalysisResult(BaseModel):
 
 class SearchQuery(BaseModel):
     query: str
+
+# Add a health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "message": "FastAPI server is running"}
 
 # Helper functions
 def get_embeddings(text: str) -> List[float]:
@@ -74,12 +79,13 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
     b = np.array(b)
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
+# First stage: Detect people in the image using GPT-4V
 async def detect_people(image_data: bytes) -> List[dict]:
     """First stage: Detect people in the image using GPT-4V"""
     try:
         # Convert image to base64
         base64_image = base64.b64encode(image_data).decode('utf-8')
-        
+
         response = await openai_client.chat.completions.create(
             model="gpt-4-vision-preview",
             messages=[
@@ -96,9 +102,7 @@ async def detect_people(image_data: bytes) -> List[dict]:
                     "content": [
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            }
+                            "image_url": { "url": f"data:image/jpeg;base64,{base64_image}" }
                         }
                     ]
                 }
@@ -106,19 +110,20 @@ async def detect_people(image_data: bytes) -> List[dict]:
             response_format={"type": "json_object"},
             max_tokens=500
         )
-        
+
         result = response.choices[0].message.content
         return result.get("detections", [])
     except Exception as e:
         print(f"Error detecting people: {e}")
         return []
 
+# Second stage: Analyze each detected person in detail
 async def analyze_person(image_data: bytes, bbox: List[float]) -> dict:
     """Second stage: Analyze each detected person in detail"""
     try:
         # Convert image to base64
         base64_image = base64.b64encode(image_data).decode('utf-8')
-        
+
         response = await openai_client.chat.completions.create(
             model="gpt-4-vision-preview",
             messages=[
@@ -141,9 +146,7 @@ async def analyze_person(image_data: bytes, bbox: List[float]) -> dict:
                     "content": [
                         {
                             "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            }
+                            "image_url": { "url": f"data:image/jpeg;base64,{base64_image}" }
                         }
                     ]
                 }
@@ -151,7 +154,7 @@ async def analyze_person(image_data: bytes, bbox: List[float]) -> dict:
             response_format={"type": "json_object"},
             max_tokens=500
         )
-        
+
         return response.choices[0].message.content
     except Exception as e:
         print(f"Error analyzing person: {e}")
@@ -173,10 +176,10 @@ async def analyze_image(file: UploadFile = File(...)):
     try:
         # Read image data
         image_data = await file.read()
-        
+
         # First stage: Detect people
         detections = await detect_people(image_data)
-        
+
         # Second stage: Analyze each person
         detailed_detections = []
         for detection in detections:
@@ -185,7 +188,7 @@ async def analyze_image(file: UploadFile = File(...)):
                 **detection,
                 **analysis
             })
-        
+
         return {
             "detections": detailed_detections,
             "summary": f"Detected {len(detections)} people in the scene"
@@ -198,21 +201,21 @@ async def search_detections(query: SearchQuery, detections: List[ImageAnalysisRe
     """Match search terms with detections using semantic search"""
     try:
         # Get embeddings for search query
-        query_embedding = await get_embeddings(query.query)
-        
+        query_embedding = get_embeddings(query.query)
+
         # Get embeddings for each detection
         matches = []
         for idx, detection in enumerate(detections):
             for det in detection.detections:
                 # Create full description including all details
                 full_desc = f"{det.description} {det.details.clothing} {' '.join(det.details.distinctive_features)}"
-                det_embedding = await get_embeddings(full_desc)
-                
+                det_embedding = get_embeddings(full_desc)
+
                 # Calculate similarity
                 similarity = cosine_similarity(query_embedding, det_embedding)
                 if similarity > 0.7:  # Threshold for considering it a match
                     matches.append(idx)
-        
+
         return {"matches": list(set(matches))}  # Remove duplicates
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
