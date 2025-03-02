@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { detectPeople, cropDetection } from './yolo_detector';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -56,53 +57,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return dotProduct / (aMagnitude * bMagnitude);
 }
 
-// Helper function to crop an image based on bounding box
-function cropImageFromBase64(base64Image: string, bbox: [number, number, number, number]): string {
-  // In a real implementation, this would use canvas or sharp to crop the image
-  // For now, we'll simulate cropping by passing the original image and bbox info
-  return base64Image;
-}
-
-// First stage: Detect people in the image using GPT-4V
-async function detectPeople(base64Image: string): Promise<{
-  bbox: [number, number, number, number];
-  confidence: number;
-}[]> {
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
-      messages: [
-        {
-          role: "system",
-          content: `You are a computer vision system specialized in detecting people in surveillance footage.
-          For each person detected, provide:
-          1. Precise bounding box coordinates [x, y, width, height] as normalized values between 0-1
-          2. Detection confidence score between 0-1
-          Return ONLY a JSON array of detections with no additional text.`
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${base64Image}` }
-            }
-          ]
-        }
-      ],
-      response_format: { type: "json_object" },
-      max_tokens: 500
-    });
-
-    const result = JSON.parse(response.choices[0].message.content || "{}");
-    return result.detections || [];
-  } catch (error) {
-    console.error("Error detecting people:", error);
-    return [];
-  }
-}
-
-// Second stage: Analyze each detected person in detail
+// Analyze each detected person in detail using GPT-4V
 async function analyzePerson(base64Image: string, bbox: [number, number, number, number]): Promise<{
   description: string;
   details: {
@@ -114,7 +69,7 @@ async function analyzePerson(base64Image: string, bbox: [number, number, number,
   };
 }> {
   try {
-    const croppedImage = cropImageFromBase64(base64Image, bbox);
+    const croppedImage = cropDetection(base64Image, bbox);
     const response = await openai.chat.completions.create({
       model: "gpt-4-vision-preview",
       messages: [
@@ -164,10 +119,10 @@ async function analyzePerson(base64Image: string, bbox: [number, number, number,
 
 export async function analyzeImage(base64Image: string): Promise<ImageAnalysisResult> {
   try {
-    // First detect all people in the image
+    // First use YOLO to detect people in the image
     const detections = await detectPeople(base64Image);
 
-    // Then analyze each detected person in detail
+    // Then analyze each detected person in detail using GPT-4V
     const analysisPromises = detections.map(async (detection) => {
       const analysis = await analyzePerson(base64Image, detection.bbox);
       return {
@@ -228,7 +183,7 @@ export async function matchSearchTerms(searchQuery: string, detections: ImageAna
     // Get embeddings for the search query
     const queryEmbedding = await getEmbeddings(searchQuery);
 
-    // Get embeddings for each detection's full description including details
+    // Get embeddings for each detection's full description
     const detectionPromises = detections.map(d =>
       Promise.all(d.detections.map(det => {
         const fullDescription = `${det.description} ${det.details.clothing} ${det.details.distinctive_features.join(" ")}`;
