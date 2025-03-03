@@ -3,6 +3,7 @@ from inference_sdk import InferenceHTTPClient
 import sys
 import json
 import base64
+import os
 
 def detect_people(base64_image):
     try:
