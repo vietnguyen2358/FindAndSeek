@@ -9,11 +9,11 @@ def detect_people(base64_image):
     try:
         client = InferenceHTTPClient(
             api_url="https://detect.roboflow.com",
-            api_key="3RyAsQaKrfI80jA1oi9Z"
+            api_key=""
         )
 
         result = client.run_workflow(
-            workspace_name="mizantech-bww5d",
+            workspace_name="",
             workflow_id="detect-count-and-visualize",
             images={
                 "image": base64_image
